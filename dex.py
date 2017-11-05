@@ -30,20 +30,20 @@ root.geometry("1280x640")
 
 # Define menu callbacks
 def NewFile():
-    messagebox("New file","TO DO")
+    messagebox.showinfo("New file","TO DO")
     
 def OpenFile():
     name = filedialog.askopenfilename()
-    messagebox("File to open",name)
+    messagebox.showinfo("File to open",name)
     
 def Preferences():
-    messagebox("Preferences","TO DO")
+    messagebox.showinfo("Preferences","TO DO")
     
 def RenameDataframe():
-    messagebox("Rename Dataframe","TO DO")
+    messagebox.showinfo("Rename Dataframe","TO DO")
     
 def About():
-    messagebox("About pydex","Python Data Exploration Tool")
+    messagebox.showinfo("About pydex","Python Data Exploration Tool")
 
 # Add menu
 menuMain = tk.Menu(root)
