@@ -8,6 +8,7 @@ Created on Mon Oct 30 14:05:47 2017
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
+from tkinter import filedialog
 
 import pandas as pd
 import seaborn as sb
@@ -22,9 +23,50 @@ from matplotlib.figure import Figure
 
 # See https://pythonprogramming.net/how-to-embed-matplotlib-graph-tkinter-gui/
 
+# Main window
 root = tk.Tk()
 root.title('Python Data Exploration Tool')
 root.geometry("1280x640")
+
+# Define menu callbacks
+def NewFile():
+    messagebox("New file","TO DO")
+    
+def OpenFile():
+    name = filedialog.askopenfilename()
+    messagebox("File to open",name)
+    
+def Preferences():
+    messagebox("Preferences","TO DO")
+    
+def RenameDataframe():
+    messagebox("Rename Dataframe","TO DO")
+    
+def About():
+    messagebox("About pydex","Python Data Exploration Tool")
+
+# Add menu
+menuMain = tk.Menu(root)
+root.config(menu=menuMain)
+
+menuFile = tk.Menu(menuMain, tearoff=False)
+menuMain.add_cascade(label="File", menu=menuFile)
+menuFile.add_command(label="New", command=NewFile)
+menuFile.add_command(label="Open...", command=OpenFile)
+menuFile.add_separator()
+menuFile.add_command(label="Exit", command=root.destroy)
+
+menuEdit = tk.Menu(menuMain, tearoff=False)
+menuMain.add_cascade(label="Edit", menu=menuEdit)
+menuEdit.add_command(label="Rename...", command=RenameDataframe)
+
+menuTools = tk.Menu(menuMain, tearoff=False)
+menuMain.add_cascade(label="Tools", menu=menuTools)
+menuTools.add_command(label="Preferences...", command=Preferences)
+
+menuHelp = tk.Menu(menuMain, tearoff=False)
+menuMain.add_cascade(label="Help", menu=menuHelp)
+menuHelp.add_command(label="About...", command=About)
 
 # Callback function - Handle exceptions
 def handle_exception(exception, value, traceback):
