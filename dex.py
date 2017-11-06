@@ -16,6 +16,8 @@ import seaborn as sb
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 
+import statsmodels.api as sm
+
 #from pandastable import Table
 
 #import matplotlib
@@ -151,7 +153,7 @@ def showGraph():
     elif graphtype.get() == 'S': 
         scatter()
     elif graphtype.get() == 'R': 
-        barplot()
+        bargraph()
     elif graphtype.get() == 'B': 
         boxplot()
         
@@ -162,6 +164,8 @@ def histogram():
     frameScatter.pack_forget()
     frameBargraph.pack_forget()
     frameBoxplot.pack_forget()
+    # Clear labelExplanation
+    labelExplanation['text'] = ''
     # Show histogram
     ax.clear() 
     ax.set_xlabel(textY.get())
@@ -176,6 +180,8 @@ def trend():
     frameScatter.pack_forget()
     frameBargraph.pack_forget()
     frameBoxplot.pack_forget()
+    # Clear labelExplanation
+    labelExplanation['text'] = ''
     # Show trend
     ax.clear() 
     ax.set_xlabel(textX.get())
@@ -196,12 +202,29 @@ def scatter():
     frameTrend.pack_forget()
     frameBargraph.pack_forget()
     frameBoxplot.pack_forget()
+    # Clear labelExplanation
+    labelExplanation['text'] = ''
     # Show trend
     ax.clear() 
     ax.set_xlabel(textX.get())
     ax.set_ylabel(textY.get())
     if len(textX.get()) > 0:
         ax.scatter(values(textX),values(textY))
+        #Add bissectrice
+        if bissectrice.get()==1:
+            ax.plot(values(textX),values(textX),'k')
+        #Add regression
+        if regression.get()==1:
+            y = values(textY)
+            x = values(textX)
+            s = (~y.isnull()) & (~x.isnull())
+            y = y[s]
+            x = x[s]
+            X = sm.add_constant(x)
+            model = sm.OLS(y,X).fit()
+            ax.plot(x,model.predict(X),'r')
+            #messagebox.showinfo("Regression info", model.summary())
+            labelExplanation['text'] = str(model.summary())
     else:
         ax.scatter(eval(comboboxDataframes.get() + '.index.get_values()'),values(textY))
     ax.grid(True)
@@ -215,6 +238,8 @@ def bargraph():
     frameTrend.pack_forget()
     frameScatter.pack_forget()
     frameBoxplot.pack_forget()
+    # Clear labelExplanation
+    labelExplanation['text'] = ''
     # Show trend
     ax.clear() 
     ax.set_xlabel(textX.get())
@@ -238,6 +263,8 @@ def boxplot():
     frameTrend.pack_forget()
     frameScatter.pack_forget()
     frameBargraph.pack_forget()
+    # Clear labelExplanation
+    labelExplanation['text'] = ''
     # Show trend
     ax.clear() 
     ax.set_xlabel(textX.get())
@@ -332,7 +359,7 @@ checkBissectrice = ttk.Checkbutton(frameScatter, text='Bissectrice', variable=bi
 checkBissectrice.pack(side=tk.TOP, anchor=tk.NW, padx=4, pady=2)
 
 regression = tk.IntVar()
-checkRegression = ttk.Checkbutton(frameScatter, text='Regression', variable=bissectrice, command=scatter)
+checkRegression = ttk.Checkbutton(frameScatter, text='Regression', variable=regression, command=scatter)
 checkRegression.pack(side=tk.TOP, anchor=tk.NW, padx=4, pady=2)
 
 frameScatter.pack_forget()
@@ -437,20 +464,19 @@ canvas.show()
 
 # Frame for Y, X, Select and Group specification
 frameVars = ttk.Frame(frameRight, relief='ridge', borderwidth=4)
-frameVars.pack(side=tk.LEFT, anchor=tk.SW, fill=tk.X, expand=True, padx=4, pady=4)
-
+frameVars.pack(side=tk.TOP, anchor=tk.SW, fill=tk.X, expand=False, padx=4, pady=4)
 
 # Frame for Y, X, Select and Group labels
-labelsFrame = ttk.Frame(frameVars)
-labelsFrame.pack(side=tk.LEFT, anchor=tk.SW, fill=tk.NONE, expand=False, pady=2)
+frameLabels = ttk.Frame(frameVars)
+frameLabels.pack(side=tk.LEFT, anchor=tk.SW, fill=tk.NONE, expand=False, pady=2)
 
 # Y, X, Select and Group specification labels
 selectedVar = tk.StringVar()
 selectedVar.set('Y')
-optionY = ttk.Radiobutton(labelsFrame, text='Y       ', variable=selectedVar, value='Y'); optionY.pack(anchor=tk.W, padx=4, pady=2)
-optionX = ttk.Radiobutton(labelsFrame, text='X       ', variable=selectedVar, value='X'); optionX.pack(anchor=tk.W, padx=4, pady=2)
-optionS = ttk.Radiobutton(labelsFrame, text='Select  ', variable=selectedVar, value='S'); optionS.pack(anchor=tk.W, padx=4, pady=2)
-optionG = ttk.Radiobutton(labelsFrame, text='Group by', variable=selectedVar, value='G'); optionG.pack(anchor=tk.W, padx=4, pady=2)
+optionY = ttk.Radiobutton(frameLabels, text='Y       ', variable=selectedVar, value='Y'); optionY.pack(anchor=tk.W, padx=4, pady=2)
+optionX = ttk.Radiobutton(frameLabels, text='X       ', variable=selectedVar, value='X'); optionX.pack(anchor=tk.W, padx=4, pady=2)
+optionS = ttk.Radiobutton(frameLabels, text='Select  ', variable=selectedVar, value='S'); optionS.pack(anchor=tk.W, padx=4, pady=2)
+optionG = ttk.Radiobutton(frameLabels, text='Group by', variable=selectedVar, value='G'); optionG.pack(anchor=tk.W, padx=4, pady=2)
 
 # Frame Y, X, Select and Group Entry boxes
 frameEntryboxes = ttk.Frame(frameVars)
@@ -463,7 +489,8 @@ textS = ttk.Entry(frameEntryboxes, text='Select'); textS.pack(fill=tk.X, expand=
 textG = ttk.Entry(frameEntryboxes, text='Group by'); textG.pack(fill=tk.X, expand=True, padx=4, pady=2)
 
 # Table at bottom
-# pt = Table(frameRight)
+labelExplanation = ttk.Label(frameRight, text='Info', font='Consolas 10')
+labelExplanation.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.BOTH, expand=False, padx=4)
 # pt.show()
 
 # 
