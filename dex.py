@@ -33,8 +33,16 @@ def NewFile():
     messagebox.showinfo("New file","TO DO")
     
 def OpenFile():
-    name = filedialog.askopenfilename()
-    messagebox.showinfo("File to open",name)
+    filename = filedialog.askopenfilename()
+    pos1 = filename.rfind('/')
+    pos2 = filename.rfind('.')
+    dfname = filename[pos1+1:pos2]
+    extension = filename[pos2+1:-1]
+    print(filename)    
+    if (extension == 'xls') | (extension == 'xlsx'):
+        exec("globals()['" + dfname +"'] = pd.read_excel('" + filename +"')")
+    return
+    messagebox.showinfo("File opened",dfname)
     
 def Preferences():
     messagebox.showinfo("Preferences","TO DO")
@@ -100,7 +108,7 @@ def click(event):
 # Callback function - Show list of colums in selected data frame
 def ListColumns(evt):
     listbox.delete(0,tk.END)
-    vars = eval(combobox.get()).columns.values
+    vars = eval(comboboxDataframes.get()).columns.values
     for var in vars:
         listbox.insert(tk.END, var)
     
@@ -112,22 +120,28 @@ def SelectColumn(evt):
         addVar(textX)
     elif selectedVar.get() == 'S': 
         addVar(textS)
+        textS.insert(tk.END, '>0')
     elif selectedVar.get() == 'G': 
         addVar(textG)
     
     showGraph()
-    
-def addVar(Entry):
-    varname =combobox.get() + '.' + listbox.get(listbox.curselection())
-    if len(Entry.get()) == 0:
-        Entry.insert(0, varname)
-    elif Entry.get()[-1] in ',+-*/':
-        Entry.insert(tk.END, ' ' + varname)
-    elif Entry.get()[-1] in ' ':
-        Entry.insert(tk.END, varname)
+
+# Add selected variable to selected text box
+def addVar(entry):
+    varname =comboboxDataframes.get() + '.' + listbox.get(listbox.curselection())
+    if len(entry.get()) == 0:
+        # If nothing yet there, simply add the variable
+        entry.insert(0, varname)
+    elif entry.get()[-1] in ',+-*/':
+        # If there is something already and it ends with , or + or - or * or /, then add the variable
+        entry.insert(tk.END, ' ' + varname)
+    elif entry.get()[-1] in ' ':
+        # If there is something already and there is an extra space, then add the variable
+        entry.insert(tk.END, varname)
     else:      
-        Entry.delete(0, tk.END)
-        Entry.insert(0, varname)
+        # replace the existing text
+        entry.delete(0, tk.END)
+        entry.insert(0, varname)
     
 def showGraph():
     if graphtype.get() == 'H': 
@@ -136,6 +150,8 @@ def showGraph():
         trend()
     elif graphtype.get() == 'S': 
         scatter()
+    elif graphtype.get() == 'R': 
+        barplot()
     elif graphtype.get() == 'B': 
         boxplot()
         
@@ -144,13 +160,12 @@ def histogram():
     frameHistogram.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
     frameTrend.pack_forget()
     frameScatter.pack_forget()
+    frameBargraph.pack_forget()
     frameBoxplot.pack_forget()
     # Show histogram
     ax.clear() 
     ax.set_xlabel(textY.get())
-    #ax.hist(eval(textY.get()))
-    #sb.distplot(eval('(' + textY.get() + ').dropna()'), ax=ax)
-    sb.distplot(values(textY), ax=ax)
+    sb.distplot(values(textY).dropna(), ax=ax)
     ax.grid(True)
     canvas.show()    
     
@@ -159,12 +174,17 @@ def trend():
     frameTrend.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
     frameHistogram.pack_forget()
     frameScatter.pack_forget()
+    frameBargraph.pack_forget()
     frameBoxplot.pack_forget()
     # Show trend
     ax.clear() 
     ax.set_xlabel(textX.get())
     ax.set_ylabel(textY.get())
-    ax.plot(eval(textX.get()),eval(textY.get()))
+    if len(textX.get()) > 0:
+        ax.plot(values(textX),values(textY))
+    else:
+        ax.plot(eval(comboboxDataframes.get() + '.index.get_values()'),values(textY))
+        
     ax.grid(True)
     canvas.show()
     return
@@ -174,54 +194,94 @@ def scatter():
     frameScatter.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
     frameHistogram.pack_forget()
     frameTrend.pack_forget()
+    frameBargraph.pack_forget()
     frameBoxplot.pack_forget()
     # Show trend
     ax.clear() 
     ax.set_xlabel(textX.get())
     ax.set_ylabel(textY.get())
-    ax.scatter(eval(textX.get()),eval(textY.get()))
+    if len(textX.get()) > 0:
+        ax.scatter(values(textX),values(textY))
+    else:
+        ax.scatter(eval(comboboxDataframes.get() + '.index.get_values()'),values(textY))
     ax.grid(True)
     canvas.show()
     return
     
+def bargraph():
+    # Show properties frame for bar graph (and hide others)
+    frameBargraph.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
+    frameHistogram.pack_forget()
+    frameTrend.pack_forget()
+    frameScatter.pack_forget()
+    frameBoxplot.pack_forget()
+    # Show trend
+    ax.clear() 
+    ax.set_xlabel(textX.get())
+    ax.set_ylabel(textY.get())
+    if len(textX.get()) == 0:
+        sb.barplot(y=values(textY),ax=ax)
+    elif len(textY.get()) == 0:
+        sb.barplot(x=values(textY),ax=ax)
+    elif len(values(textX).unique()) < 100:
+        sb.barplot(x=values(textX),y=values(textY),ax=ax)
+    else:
+        messagebox.showinfo('Warning','Too many categories')
+    ax.grid(True)
+    canvas.show()
+    return
+
 def boxplot():
     # Show properties frame for boxplot (and hide others)
     frameBoxplot.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
     frameHistogram.pack_forget()
     frameTrend.pack_forget()
     frameScatter.pack_forget()
+    frameBargraph.pack_forget()
     # Show trend
     ax.clear() 
     ax.set_xlabel(textX.get())
     ax.set_ylabel(textY.get())
-    #ax.boxplot(eval(textY.get()),eval(textX.get()))
-    sb.boxplot(x=eval('(' + textX.get() + ').dropna()'),y=eval('(' + textY.get() + ').dropna()'),notch=True,ax=ax)
+    if len(textX.get()) == 0:
+        sb.boxplot(y=values(textY),notch=True,ax=ax)
+    elif len(textY.get()) == 0:
+        sb.boxplot(x=values(textY),notch=True,ax=ax)
+    elif len(values(textX).unique()) < 100:
+        sb.boxplot(x=values(textX),y=values(textY),notch=True,ax=ax)
+    else:
+        messagebox.showinfo('Warning','Too many categories')
     ax.grid(True)
     canvas.show()
     return
     
 def values(obj):
-    data = eval('(' + obj.get() + ').dropna()')
+    if len(textS.get()) > 0:
+        # values, filtered
+        data = eval('(' + obj.get() + ')[' + textS.get() +']')
+    else:
+        # values, without filter
+        data = eval('(' + obj.get() + ')')
+    # Show error message if no values found
     if data.count() == 0:
         messagebox.showinfo('Error','No data found')
-
+    # return data
     return data
     
 
 # Left frame
-leftFrame = ttk.Frame(root)
-leftFrame.pack(side=tk.LEFT, anchor=tk.NW, fill=tk.Y, padx=4, pady=2)
+frameLeft = ttk.Frame(root)
+frameLeft.pack(side=tk.LEFT, anchor=tk.NW, fill=tk.Y, padx=4, pady=2)
 
 # Combobox to select a data frame
-combobox = ttk.Combobox(leftFrame)
+comboboxDataframes = ttk.Combobox(frameLeft)
 variables= [var for var in dir() if isinstance(eval(var), pd.core.frame.DataFrame)]
-combobox['values'] = variables
-combobox.bind('<Return>',ListColumns)
-combobox.bind('<<ComboboxSelected>>',ListColumns)
-combobox.pack(pady=4)
+comboboxDataframes['values'] = variables
+comboboxDataframes.bind('<Return>',ListColumns)
+comboboxDataframes.bind('<<ComboboxSelected>>',ListColumns)
+comboboxDataframes.pack(pady=4)
 
 # Properties panel 
-frameProperties = ttk.Frame(leftFrame, relief='ridge', borderwidth=4)
+frameProperties = ttk.Frame(frameLeft, relief='ridge', borderwidth=4)
 frameProperties.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
 
 # Properties panel Histogram
@@ -277,6 +337,20 @@ checkRegression.pack(side=tk.TOP, anchor=tk.NW, padx=4, pady=2)
 
 frameScatter.pack_forget()
 
+# Properties panel Bargraph
+frameBargraph = ttk.Frame(frameProperties)
+frameBargraph.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
+
+labelAggregateFunction = ttk.Label(frameBargraph, text='Function')
+labelAggregateFunction.pack(side=tk.LEFT, anchor=tk.NW, padx=4, pady=2)
+
+comboboxAggregateFunction = ttk.Combobox(frameBargraph)
+listFunctions = ['count','mean','sum','min','max','stdev']
+comboboxAggregateFunction['values'] = listFunctions
+comboboxAggregateFunction.pack()
+        
+frameBargraph.pack_forget()
+
 # Properties panel Boxplot
 frameBoxplot = ttk.Frame(frameProperties)
 frameBoxplot.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
@@ -291,11 +365,11 @@ frameBoxplot.pack_forget()
 
 
 # Textbox for searching a variable
-textEntry = ttk.Entry(leftFrame)
-textEntry.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.X, pady=4)
+textSearch = ttk.Entry(frameLeft)
+textSearch.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.X, pady=4)
 
 # listbox with scrollbar to select a variable (column in the data frame)
-frameListbox = ttk.Frame(leftFrame, relief='ridge', borderwidth=1)
+frameListbox = ttk.Frame(frameLeft, relief='ridge', borderwidth=1)
 frameListbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=1, pady=4)
 
 scrollbar = ttk.Scrollbar(frameListbox, orient=tk.VERTICAL)
@@ -306,33 +380,32 @@ listbox.bind('<<ListboxSelect>>',SelectColumn)
 listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
 
 
-#listbox.bind('<Return>',SelectColumn)
+# Frame for right side of the window
+frameRight = ttk.Frame(root)
+frameRight.pack(side=tk.LEFT, anchor=tk.NW, fill=tk.BOTH, expand=True, pady=2)
 
-
-# Right frame
-rightFrame = ttk.Frame(root)
-rightFrame.pack(side=tk.LEFT, anchor=tk.NW, fill=tk.BOTH, expand=True, pady=2)
-
-# Button frame
-graphtypeFrame = ttk.Frame(rightFrame)
-graphtypeFrame.pack(side=tk.TOP, anchor=tk.NW, fill=tk.X, expand=False, padx=4)
+# Frame with graph types
+frameGraphtype = ttk.Frame(frameRight)
+frameGraphtype.pack(side=tk.TOP, anchor=tk.NW, fill=tk.X, expand=False, padx=4)
 
 # Buttons
 graphtype = tk.StringVar() 
 graphtype.set('H')
-optionHistogram = ttk.Radiobutton(graphtypeFrame, text='Histogram ', variable=graphtype, value='H', command=histogram)
-optionTrend     = ttk.Radiobutton(graphtypeFrame, text='Trend     ', variable=graphtype, value='T', command=trend)
-optionScatter   = ttk.Radiobutton(graphtypeFrame, text='XY        ', variable=graphtype, value='S', command=scatter)
-optionBoxplot   = ttk.Radiobutton(graphtypeFrame, text='Boxplot   ', variable=graphtype, value='B', command=boxplot)
+optionHistogram = ttk.Radiobutton(frameGraphtype, text='Histogram ', variable=graphtype, value='H', command=histogram)
+optionTrend     = ttk.Radiobutton(frameGraphtype, text='Trend     ', variable=graphtype, value='T', command=trend)
+optionScatter   = ttk.Radiobutton(frameGraphtype, text='XY        ', variable=graphtype, value='S', command=scatter)
+optionBargraph  = ttk.Radiobutton(frameGraphtype, text='Bar       ', variable=graphtype, value='R', command=bargraph)
+optionBoxplot   = ttk.Radiobutton(frameGraphtype, text='Boxplot   ', variable=graphtype, value='B', command=boxplot)
 
-buttonExit      = ttk.Button(graphtypeFrame, text='Exit', command=exit_program)
-buttonCode      = ttk.Button(graphtypeFrame, text='Code', command=code)
-buttonRefresh   = ttk.Button(graphtypeFrame, text='Refresh', command=showGraph)
+buttonExit      = ttk.Button(frameGraphtype, text='Exit', command=exit_program)
+buttonCode      = ttk.Button(frameGraphtype, text='Code', command=code)
+buttonRefresh   = ttk.Button(frameGraphtype, text='Refresh', command=showGraph)
 
 
 optionHistogram.pack(side=tk.LEFT, anchor=tk.NW, padx=4, pady=4)
 optionTrend.pack(side=tk.LEFT, anchor=tk.NW, padx=4, pady=4)
 optionScatter.pack(side=tk.LEFT, anchor=tk.NW, padx=4, pady=4)
+optionBargraph.pack(side=tk.LEFT, anchor=tk.NW, padx=4, pady=4)
 optionBoxplot.pack(side=tk.LEFT, anchor=tk.NW, padx=4, pady=4)
 
 buttonExit.pack(side=tk.RIGHT, anchor=tk.NE, padx=4, pady=4)
@@ -340,7 +413,7 @@ buttonCode.pack(side=tk.RIGHT, anchor=tk.NE, padx=4, pady=4)
 buttonRefresh.pack(side=tk.RIGHT, anchor=tk.NE, padx=4, pady=4)
 
 # Notebook (tab control)
-notebook = ttk.Notebook(rightFrame)
+notebook = ttk.Notebook(frameRight)
 frame1 = ttk.Frame(notebook)
 frame2 = ttk.Frame(notebook)
 notebook.add(frame1, text='Page 1', )
@@ -363,7 +436,7 @@ canvas.show()
 #toolbar.update()
 
 # Frame for Y, X, Select and Group specification
-frameVars = ttk.Frame(rightFrame, relief='ridge', borderwidth=4)
+frameVars = ttk.Frame(frameRight, relief='ridge', borderwidth=4)
 frameVars.pack(side=tk.LEFT, anchor=tk.SW, fill=tk.X, expand=True, padx=4, pady=4)
 
 
@@ -380,17 +453,17 @@ optionS = ttk.Radiobutton(labelsFrame, text='Select  ', variable=selectedVar, va
 optionG = ttk.Radiobutton(labelsFrame, text='Group by', variable=selectedVar, value='G'); optionG.pack(anchor=tk.W, padx=4, pady=2)
 
 # Frame Y, X, Select and Group Entry boxes
-textEntryFrame = ttk.Frame(frameVars)
-textEntryFrame.pack(side=tk.LEFT, anchor=tk.SW, fill=tk.X, expand=True, pady=2)
+frameEntryboxes = ttk.Frame(frameVars)
+frameEntryboxes.pack(side=tk.LEFT, anchor=tk.SW, fill=tk.X, expand=True, pady=2)
 
 # Y, X, Select and Group specification
-textY = ttk.Entry(textEntryFrame, text='Y'); textY.pack(fill=tk.X, expand=True, padx=4, pady=2)
-textX = ttk.Entry(textEntryFrame, text='X'); textX.pack(fill=tk.X, expand=True, padx=4, pady=2)
-textS = ttk.Entry(textEntryFrame, text='Select'); textS.pack(fill=tk.X, expand=True, padx=4, pady=2)
-textG = ttk.Entry(textEntryFrame, text='Group by'); textG.pack(fill=tk.X, expand=True, padx=4, pady=2)
+textY = ttk.Entry(frameEntryboxes, text='Y'); textY.pack(fill=tk.X, expand=True, padx=4, pady=2)
+textX = ttk.Entry(frameEntryboxes, text='X'); textX.pack(fill=tk.X, expand=True, padx=4, pady=2)
+textS = ttk.Entry(frameEntryboxes, text='Select'); textS.pack(fill=tk.X, expand=True, padx=4, pady=2)
+textG = ttk.Entry(frameEntryboxes, text='Group by'); textG.pack(fill=tk.X, expand=True, padx=4, pady=2)
 
 # Table at bottom
-# pt = Table(rightFrame)
+# pt = Table(frameRight)
 # pt.show()
 
 # 
