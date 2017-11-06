@@ -27,7 +27,7 @@ import statsmodels.api as sm
 
 # Main window
 root = tk.Tk()
-root.title('Python Data Exploration Tool')
+root.title('Python Data Exploration Tool - version 0.1')
 root.geometry("1280x640")
 
 # Define menu callbacks
@@ -171,10 +171,16 @@ def histogram():
     ax.set_xlabel(textY.get())
     
     if cumulative.get():
-        sb.distplot(values(textY).dropna(), ax=ax, hist_kws={'cumulative': True}, kde_kws={'cumulative': True})
+        if len(entryBins.get()) > 0:
+            sb.distplot(values(textY).dropna(), bins=int(entryBins.get()), hist_kws={'cumulative': True}, kde_kws={'cumulative': True}, ax=ax)
+        else:
+            sb.distplot(values(textY).dropna(), hist_kws={'cumulative': True}, kde_kws={'cumulative': True}, ax=ax)
     else:
-        sb.distplot(values(textY).dropna(), ax=ax)
-        
+        if len(entryBins.get()) > 0:
+            sb.distplot(values(textY).dropna(), bins=int(entryBins.get()), ax=ax)
+        else:
+            sb.distplot(values(textY).dropna(), ax=ax)
+            
     ax.grid(True)
     canvas.show()    
     
@@ -320,7 +326,7 @@ frameProperties.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
 frameHistogram = ttk.Frame(frameProperties)
 frameHistogram.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
 
-labelHistogram = ttk.Label(frameHistogram, text='bins(min:step:max)')
+labelHistogram = ttk.Label(frameHistogram, text='number of bins:')
 labelHistogram.pack(side=tk.TOP, anchor=tk.NW, padx=4, pady=2)
 
 entryBins = ttk.Entry(frameHistogram)
