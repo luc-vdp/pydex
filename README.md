@@ -4,7 +4,7 @@
 The intention of this project is to make data exploration easy.
 The GUI is written using Tkinter, the standard GUI toolkit for python. It allows to explore pandas data frames.
 
-Pandas is an open source Python library providing high-performance data structures and data analysis tools.
+Pandas is an open source Python library providing data structures and data analysis tools.
 
 It uses the graphical possibilities of Matplotlib and Seaborn.
 
