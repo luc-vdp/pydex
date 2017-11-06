@@ -169,7 +169,12 @@ def histogram():
     # Show histogram
     ax.clear() 
     ax.set_xlabel(textY.get())
-    sb.distplot(values(textY).dropna(), ax=ax)
+    
+    if cumulative.get():
+        sb.distplot(values(textY).dropna(), ax=ax, hist_kws={'cumulative': True}, kde_kws={'cumulative': True})
+    else:
+        sb.distplot(values(textY).dropna(), ax=ax)
+        
     ax.grid(True)
     canvas.show()    
     
