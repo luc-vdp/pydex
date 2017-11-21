@@ -9,6 +9,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
 from tkinter import filedialog
+from tkinter import StringVar
 
 import pandas as pd
 import seaborn as sb
@@ -109,10 +110,13 @@ def click(event):
     
 # Callback function - Show list of colums in selected data frame
 def ListColumns(evt):
-    listbox.delete(0,tk.END)
+    search_term = textSearch.get()
+    listbox.delete(0, tk.END)
     vars = eval(comboboxDataframes.get()).columns.values
-    for var in vars:
-        listbox.insert(tk.END, var)
+    # Filtering listbox using search term from textSearch box 
+    for item in vars:
+        if search_term.lower() in item.lower():
+            listbox.insert(tk.END, item)
     
 # Callback function - Add selected variable
 def SelectColumn(evt):
@@ -403,7 +407,9 @@ frameBoxplot.pack_forget()
 
 
 # Textbox for searching a variable
-textSearch = ttk.Entry(frameLeft)
+sv = StringVar()
+sv.trace("w", lambda name, index, mode, sv=sv: ListColumns(None))
+textSearch = ttk.Entry(frameLeft, textvariable=sv)
 textSearch.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.X, pady=4)
 
 # listbox with scrollbar to select a variable (column in the data frame)
