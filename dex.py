@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Oct 30 14:05:47 2017
-
 @author: luc.vandeputte@arcelormittal.com
 """
 
@@ -506,4 +505,4 @@ labelExplanation.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.BOTH, expand=False, 
 
 # 
 root.bind('<Button-1>', click)
-root.mainloop()    
+root.mainloop()   
