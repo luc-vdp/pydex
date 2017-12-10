@@ -10,6 +10,8 @@ pydex - Python Data Exploration Tool - Data
 #%% Import libraries
 import tkinter as tk
 import tkinter.ttk as ttk
+import pyodbc 
+import pandas as pd
 from PyTree import PyTree
 
 #%% Main class
@@ -25,6 +27,49 @@ class PyData(ttk.Frame):
         ttk.Frame.__init__(self, master)
         self.grid(sticky=tk.N+tk.S+tk.E+tk.W)
         self.createWidgets()
+
+    #%% Actions to do when a treeview item is selected in the Query Tree
+    def selectQuery(self, event):
+        # Get selected tree item
+        Id = self.treeviewQueries.Id
+        
+        # Get corresponding info from database
+        self.connection = pyodbc.connect(self.connectionString)
+        data = pd.io.sql.read_sql("Select A.*, B.ConnectionName, B.DatabaseId From Queries A, Connections B " +
+                                  "Where A.ConnectionId = B.Id " + 
+                                  "  And A.Id = " + Id, self.connection)
+                    
+        # Clear entries
+        self.entryQueryName.delete(0, tk.END)
+
+        if len(data.index) > 0:
+            # Fill in Database
+            if data.ConnectionName[0] is not None:
+                self.DatabaseName.set(data.ConnectionName[0].strip())
+            
+            # Fill in Name
+            if data.QueryName[0] is not None:
+                self.entryQueryName.insert(0, data.QueryName[0].strip())
+            
+            # Fill in Query
+            if data.SQL_Data[0] is not None:
+                self.textQuery.insert(tk.END, data.SQL_Data[0].strip())
+        
+    #%% Actions to do when a treeview item is selected in the Query Tree
+    def selectTable(self, event):
+        # Get selected tree item
+        Id = self.treeviewTablesAndViews.Id
+        
+        # Get corresponding info from database
+        self.connection = pyodbc.connect(self.connectionString)
+        data = pd.io.sql.read_sql("Select * From Tables Where Id = " + Id, self.connection)
+        
+        # Clear entries
+        #self.entryQueryName.delete(0, tk.END)
+
+        # Fill in Name
+        #if data.QueryName[0] is not None:
+        #    self.entryQueryName.insert(0, data.QueryName[0])
 
     #%% Create widgets
     def createWidgets(self):
@@ -56,6 +101,8 @@ class PyData(ttk.Frame):
         # Queries Tree
         self.treeviewQueries = PyTree(self.frameQueries, connectionString=self.connectionString, table='Queries')
         self.treeviewQueries.grid(row = 0, column = 0, rowspan=11, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        # Define events
+        self.frameQueries.bind('<<TreeviewSelect>>', self.selectQuery)
 
         # TablesAndViews tab page
         self.frameTablesAndViews = ttk.Frame(self.notebookLeft) 
@@ -70,6 +117,8 @@ class PyData(ttk.Frame):
                                             filterColumn='DatabaseId',
                                             filterId='20')
         self.treeviewTablesAndViews.grid(row = 0, column = 0, rowspan=11, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        # Define events
+        self.frameTablesAndViews.bind('<<TreeviewSelect>>', self.selectTable)
 
         # Show Settings ?
         self.showSettings = tk.IntVar() 
@@ -83,12 +132,15 @@ class PyData(ttk.Frame):
 
         #%% MIDDLE
         # Database
+        self.DatabaseName = tk.StringVar()
         ttk.Label(self, text = "Database:").grid(row = 0, column = 2, sticky = tk.NE, padx =5, pady=5)
-        ttk.Button(self, text = "Select database").grid(row = 0, column = 3, columnspan=4, sticky = tk.W + tk.E, padx =5, pady=5)
+        self.buttonDatabase = ttk.Button(self, text = "Select database", textvariable=self.DatabaseName)
+        self.buttonDatabase.grid(row = 0, column = 3, columnspan=4, sticky = tk.W + tk.E, padx =5, pady=5)
         
         # Query name
         ttk.Label(self, text = "Query:").grid(row=1, column=2, sticky=tk.E, padx=5, pady=0)
-        ttk.Entry(self).grid(row=1, column=3, columnspan=4, sticky=tk.W + tk.E, padx=5, pady=0)
+        self.entryQueryName = ttk.Entry(self)
+        self.entryQueryName.grid(row=1, column=3, columnspan=4, sticky=tk.W + tk.E, padx=5, pady=0)
         ttk.Button(self, text = "Find...").grid(row=1, column=7, sticky=tk.W, padx=0, pady=0)
         
         # Last changed
@@ -103,12 +155,16 @@ class PyData(ttk.Frame):
         self.notebookMiddle.add(self.frameQuery, text=' Query ', sticky=tk.NW + tk.SE)
         
         #  Make row and column stretchable         
-        self.frameQuery.rowconfigure(0, weight=1)
+        self.frameQuery.rowconfigure(1, weight=1)
         self.frameQuery.columnconfigure(0, weight=1)        
         
         #  Query Text
+        self.textParameterQuery = tk.Text(self.frameQuery, height=4)
+        self.textParameterQuery.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =1, pady=1)
+
+        #  Query Text
         self.textQuery = tk.Text(self.frameQuery)
-        self.textQuery.grid(row = 0, column = 0, rowspan=13, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.textQuery.grid(row = 1, column = 0, rowspan=12, sticky = tk.NE + tk.SW, padx =1, pady=1)
 
         #  Columns tab page
         self.frameColumns = ttk.Frame(self.notebookMiddle) 
