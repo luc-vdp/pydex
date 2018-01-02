@@ -12,7 +12,6 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import tkinter.messagebox as messagebox
 import pyodbc 
-import pandas as pd
 from PyTree import PyTree
 import getpass
 import datetime
@@ -20,33 +19,36 @@ import database
     
 #%% Main Class
 class PyDatabases(ttk.Frame):
-    def __init__(self, master = None, connectionString = None):        
+    def __init__(self, master=None, connectionStringMeta=None, connectionId=None):        
 #        # setup custom exception handling
 #        self.report_callback_exception = self.handle_exception
 
-        # Define connection
-        if connectionString is None:
-            self.connectionString = "DRIVER={SQL Server Native Client 11.0};Server=PA-LPUTTE;Database=Metadata;Trusted_Connection=yes;"
+        # Define connectionstring to the metadata
+        if connectionStringMeta is None:
+            self.connectionStringMeta = "DRIVER={SQL Server Native Client 11.0};Server=PA-LPUTTE;Database=Metadata;Trusted_Connection=yes;"
         else:
-            self.connectionString = connectionString
+            self.connectionStringMeta = connectionStringMeta
+
+        # Initialize connectionstring and connectionId to the selected database 
+        self.connectionStringData = ''
+        self.connectionId = connectionId
 
         # Construct the Frame object.
         ttk.Frame.__init__(self, master)
         self.grid(sticky=tk.N+tk.S+tk.E+tk.W)
         self.createWidgets()
-
+        
 #    # Callback function - Handle exceptions
 #    def handle_exception(exception, value, traceback):
 #        messagebox.showinfo('Error',value)
-
+        
     #%% Actions to do when a treeview item is selected
     def selectItem(self, event):
         # Get selected tree item
         Id = self.treeview.Id
         
         # Get corresponding info from database
-        self.connection = pyodbc.connect(self.connectionString)
-        data = pd.io.sql.read_sql("Select * From Connections Where Id = " + Id, self.connection)
+        data = database.getData(self.connectionStringMeta, "Select * From Connections Where Id = " + Id)
         
         # Clear entries
         self.entryName.delete(0, tk.END)
@@ -57,6 +59,8 @@ class PyDatabases(ttk.Frame):
         self.entryUsername.delete(0, tk.END)
         self.entryPassword.delete(0, tk.END)
         self.entryDatabaseId.delete(0, tk.END)
+        self.textDescription.delete(1.0, tk.END)
+
         #self.labelLastUpdated.delete(0, tk.END)
         #self.textDescription.delete(0, tk.END)
         
@@ -105,9 +109,13 @@ class PyDatabases(ttk.Frame):
         # Fill in Description
         if data.Description[0] is not None:
             self.textDescription.insert(1.0, data.Description[0].strip())
-        else:
-            self.textDescription.insert(1.0, '')
-      
+            
+        self.connectionStringData = database.connectionstring(self.comboboxDriver.get().strip(),
+                                                              self.entryServer.get().strip(),
+                                                              self.entryDatabase.get().strip(),
+                                                              self.entryUsername.get().strip(),
+                                                              self.entryPassword.get().strip())
+
     def changeWindowsSecurity(self):
         if self.windowsSecurity.get() == 1:
             self.labelUsername.grid_forget()
@@ -128,15 +136,18 @@ class PyDatabases(ttk.Frame):
     
     def testConnection(self):
         try:
-            if self.entryUsername.get().strip() == '':
-                connectionString = 'DRIVER={' + self.comboboxDriver.get().strip() + '};Server=' + self.entryServer.get().strip() + ';Database=' + self.entryDatabase.get().strip() + ';Trusted_Connection=yes;'
-            else:
-                connectionString = 'DRIVER={' + self.comboboxDriver.get().strip() + '};Server=' + self.entryServer.get().strip() + ';Database=' + self.entryDatabase.get().strip() + ';UID=' + self.entryUsername.get().strip() + ';PWD=' + self.entryPassword.get().strip()
-                                      
+            # Compose connection string
+            connectionString = database.connectionstring(self.comboboxDriver.get().strip(),
+                                                         self.entryServer.get().strip(),
+                                                         self.entryDatabase.get().strip(),
+                                                         self.entryUsername.get().strip(),
+                                                         self.entryPassword.get().strip())
+            # Try to connect
             pyodbc.connect(connectionString)
-            
+            # Give feedback that connection succeeded
             messagebox.showinfo(message="Test connection succeeded")
         except pyodbc.Error as ex: 
+            # Give feedback that connect failed
             messagebox.showerror("Test connection failed", "ConnectionString:\n" + connectionString + "\n\nError:\n" + ex.args[1])
         
     def save(self):
@@ -155,7 +166,7 @@ class PyDatabases(ttk.Frame):
                  " WHERE Id = " + self.Id.get())
         
         # Execute update query
-        database.setData(self.connectionString, query)
+        database.setData(self.connectionStringMeta, query)
             
         # Refresh the tree
         self.treeview.refreshTree(id=self.Id.get())
@@ -182,7 +193,7 @@ class PyDatabases(ttk.Frame):
 
         #%% LEFT
         # Tree
-        self.treeview = PyTree(self, connectionString=self.connectionString, table='Connections')
+        self.treeview = PyTree(self, connectionString=self.connectionStringMeta, table='Connections', id=self.connectionId)
         
         # Define events
         self.bind('<<TreeviewSelect>>', self.selectItem)
@@ -205,6 +216,8 @@ class PyDatabases(ttk.Frame):
         ttk.Label(self, text = "Driver:").grid(row = 2, column = 1, sticky = tk.E, padx =5, pady=5)
         self.comboboxDriver = ttk.Combobox(self)
         self.comboboxDriver.grid(row = 2, column = 2, sticky = tk.W + tk.E, padx =5, pady=5)
+        self.drivers = database.getData(self.connectionStringMeta ,"Select Rtrim(Driver) As Driver From Drivers")
+        self.comboboxDriver['values'] = self.drivers.Driver.values.tolist()
         
         # Server
         ttk.Label(self, text = "Server:").grid(row = 3, column = 1, sticky = tk.E, padx =5, pady=5)

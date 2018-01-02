@@ -20,15 +20,23 @@ from PyScripts import PyScripts
 class PyDex(ttk.Frame):
     def __init__(self, master = None):
         # Define connection
-        self.connectionString = "DRIVER={SQL Server Native Client 11.0};Server=PA-LPUTTE;Database=Metadata;Trusted_Connection=yes;"
+        self.connectionStringMeta = "DRIVER={SQL Server Native Client 11.0};Server=PA-LPUTTE;Database=Metadata;Trusted_Connection=yes;"
         # Construct the Frame object.
         ttk.Frame.__init__(self, master)
         # Make row and column stretchable         
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)        
         self.grid(sticky=tk.N+tk.S+tk.E+tk.W)
+        # Store all dataframes
+#        global glb
+#        glb = globals()
+        self.dataframes = {}
         # Create the menus
-        self.CreateMenus()
+        # self.CreateMenus()
+        # Connection properties
+        self.connectionId = None
+        self.connectionName = None
+        self.connectionString = None
         # Create the widgets
         self.createWidgets()
 
@@ -78,6 +86,11 @@ class PyDex(ttk.Frame):
     def About(self):
         messagebox.showinfo("About pydex","Python Data Exploration Tool")
         
+    def selectDatabaseTab(self, event):
+        self.notebook.select(4)
+        #print(PyData.getConnectionId(PyData))
+        #PyDatabases.setItem(PyData.getConnectionId(PyData))
+        
     # Create the widgets
     def createWidgets(self):
         # Create tabbed control (notebook)
@@ -91,8 +104,9 @@ class PyDex(ttk.Frame):
         self.frameData.rowconfigure(0, weight=1)
         self.frameData.columnconfigure(0, weight=1)        
         # Add Data widget
-        self.pyData = PyData(self.frameData)
+        self.pyData = PyData(self.frameData, self.connectionStringMeta, self.dataframes, self.connectionId, self.connectionName, self.connectionString)
         self.pyData.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =5, pady=5)
+        self.pyData.bind('<<DatabaseSelect>>', self.selectDatabaseTab)
 
         # Graphs tab page
         self.frameGraphs = ttk.Frame(self.notebook) 
@@ -101,7 +115,7 @@ class PyDex(ttk.Frame):
         self.frameGraphs.rowconfigure(0, weight=1)
         self.frameGraphs.columnconfigure(0, weight=1)        
         # Add Database widget
-        self.pyGraphs = PyGraphs(self.frameGraphs)
+        self.pyGraphs = PyGraphs(self.frameGraphs, self.connectionStringMeta)
         self.pyGraphs.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =5, pady=5)
 
         # Explore tab page
@@ -111,7 +125,7 @@ class PyDex(ttk.Frame):
         self.frameExplore.rowconfigure(0, weight=1)
         self.frameExplore.columnconfigure(0, weight=1)        
         # Add Database widget
-        self.pyExplore = PyExplore(self.frameExplore)
+        self.pyExplore = PyExplore(self.frameExplore, self.dataframes)
         self.pyExplore.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =5, pady=5)
 
         # Scripts tab page
@@ -123,17 +137,6 @@ class PyDex(ttk.Frame):
         # Add Database widget
         self.pyScripts = PyScripts(self.frameScripts)
         self.pyScripts.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =5, pady=5)
-
-        # Databases tab page
-        self.frameDatabases = ttk.Frame(self.notebook) 
-        self.notebook.add(self.frameDatabases, text=' Databases ', sticky=tk.NW + tk.SE)
-        # Make row and column stretchable         
-        self.frameDatabases.rowconfigure(0, weight=1)
-        self.frameDatabases.columnconfigure(0, weight=1)        
-        # Add Database widget
-        self.pyDatabases = PyDatabases(self.frameDatabases)
-        self.pyDatabases.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =5, pady=5)
-
 
 # Allow the class to run stand-alone.
 if __name__ == "__main__":

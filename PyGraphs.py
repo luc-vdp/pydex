@@ -79,10 +79,7 @@ class PyGraphs(ttk.Frame):
                AND A.[ID] = ''' + self.Id)
                               
         # Get the metadata
-        global metadata
-        metadata = database.getData(self.connectionStringMeta, query)
-        print(metadata)
-        self.metadata = metadata 
+        self.metadata = database.getData(self.connectionStringMeta, query)
         
     def showGraph(self, event=None):
         # Get the data
@@ -93,6 +90,16 @@ class PyGraphs(ttk.Frame):
         self.pyTable.addDataframe(dataframe = self.data)
         # Determine X-variable
         X_variable = self.metadata.X_variable[0].strip()
+        # Determine Y-variables
+        if self.metadata.ColumnName[0] != None:
+            Y_variable = []
+            # Get all defined Y-variables
+            for i in self.metadata.index:
+                Y_variable.append(self.metadata.ColumnName[i].strip())
+        else:
+            # Get all numerical columns
+            Y_variable = self.data._get_numeric_data().columns
+                
         # Show the data in the graph
         for i in self.metadata.index:
             Y_variable = self.metadata.ColumnName[i].strip()
@@ -167,7 +174,7 @@ class PyGraphs(ttk.Frame):
         self.panedwindowRight = tk.PanedWindow(self, orient=tk.VERTICAL)
         self.panedwindowMain.add(self.panedwindowRight)
     
-        # Create matplotlib figureand add it to frameRight
+        # Create matplotlib figure and add it to frameRight
         self.fig = Figure(figsize=(12, 10), tight_layout=True)
 
         self.ax1 = self.fig.add_subplot(3,1,1)

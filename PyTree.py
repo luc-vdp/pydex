@@ -19,7 +19,7 @@ import database
 
 #%% Class definition
 class PyTree(ttk.Frame):
-    def __init__(self, master = None, connectionString = None, table = None, filterColumn = None, filterId = None):        
+    def __init__(self, master = None, connectionString = None, table = None, filterColumn = None, filterId = None, id = None):        
         # Define connectionsString and table
         if connectionString is None:
             self.connectionString = "DRIVER={SQL Server Native Client 11.0};Server=PA-LPUTTE;Database=Metadata;Trusted_Connection=yes;"
@@ -50,7 +50,18 @@ class PyTree(ttk.Frame):
         # Initialize variable
         self.moveId = ''   
     
-    
+        #Select the connection if specified
+        if id != None:
+            try:
+                # Make sure that item is visible
+                self.treeview.see(id)
+                # Select item in tree            
+                self.treeview.selection_set(id)
+                # Set focus on the item
+                self.treeview.focus(id)
+            except:
+                pass
+            
     def FullTitle(self):
         # Get selected tree item
         id = self.treeview.focus()

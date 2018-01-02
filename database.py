@@ -35,3 +35,11 @@ def setData(connectionString, query):
     # Close the connection to the database
     connection.close()
 
+def text(txt):
+    return txt.replace("'", "''")
+
+def connectionstring(driver, server, database, username, password): 
+    if username == '':
+        return 'DRIVER={' + driver + '};Server=' + server + ';Database=' + database + ';Trusted_Connection=yes;'
+    else:
+        return 'DRIVER={' + driver + '};Server=' + server + ';Database=' + database + ';UID=' + username + ';PWD=' + password

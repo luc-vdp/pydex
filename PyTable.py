@@ -26,7 +26,7 @@ class PyTable(ttk.Frame):
 
     def importData(self):
         filename = filedialog.askopenfilename()
-        if filename != None:
+        if filename != '':
             # Set wait cursor
             self.config(cursor="wait")
             self.update()

@@ -12,43 +12,48 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import tkinter.messagebox as messagebox
 from tkinter import simpledialog
-import pyodbc 
-import pandas as pd
 from PyTree import PyTree
 from PyParameters import PyParameters
 from PyTable import PyTable
+from PyDatabases import PyDatabases
 from tkinter.scrolledtext import ScrolledText
+import getpass
+import datetime
 import database
 import sys
 
 #%% Main class
 class PyData(ttk.Frame):
-    def __init__(self, master = None, connectionString = None):
+    def __init__(self, master=None, connectionStringMeta=None, dataframes=None, connectionId=None, connectionName=None, connectionString=None):        
         # Define connection to the meta data
-        if connectionString is None:
+        if connectionStringMeta is None:
             self.connectionStringMeta = "DRIVER={SQL Server Native Client 11.0};Server=PA-LPUTTE;Database=Metadata;Trusted_Connection=yes;"
         else:
-            self.connectionStringMeta = connectionString
-            
+            self.connectionStringMeta = connectionStringMeta
+        # Store dataframes
+        self.dataframes = dataframes
         # Construct the Frame object.
         ttk.Frame.__init__(self, master)
         self.grid(sticky=tk.N+tk.S+tk.E+tk.W)
         self.createWidgets()
 
+    def getConnectionId(self):
+        return self.connectionId.get()
+        
     #%% Actions to do when a treeview item is selected in the Query Tree
     def selectQuery(self, event):
         # Get selected tree item
         Id = self.treeviewQueries.Id
         
         # Get corresponding info from database
-        self.connectionMeta = pyodbc.connect(self.connectionStringMeta)
-        data = pd.io.sql.read_sql("Select A.*, B.ConnectionName, B.DatabaseId, " +
-                                  "       CASE WHEN B.[User] = '' THEN 'DRIVER={' + Rtrim(B.Driver) + '};Server=' + Rtrim(B.Server) + ';Database=' + Rtrim(B.[Database]) + ';Trusted_Connection=yes;' "
-                                  "             ELSE 'DRIVER={' + Rtrim(B.Driver) + '};Server=' + Rtrim(B.Server) + ';Database=' + Rtrim(B.[Database]) + ';UID=' + Rtrim(B.[User]) + ';PWD=' + Rtrim(B.[Password]) END As ConnectionString "           
-                                  "From Queries A, Connections B " +
-                                  "Where A.ConnectionId = B.Id " + 
-                                  "  And A.Id = " + Id, self.connectionMeta)
-                    
+        query = ("Select A.*, B.ConnectionName, B.DatabaseId, " +
+                 "       CASE WHEN B.[User] = '' THEN 'DRIVER={' + Rtrim(B.Driver) + '};Server=' + Rtrim(B.Server) + ';Database=' + Rtrim(B.[Database]) + ';Trusted_Connection=yes;' "
+                 "             ELSE 'DRIVER={' + Rtrim(B.Driver) + '};Server=' + Rtrim(B.Server) + ';Database=' + Rtrim(B.[Database]) + ';UID=' + Rtrim(B.[User]) + ';PWD=' + Rtrim(B.[Password]) END As ConnectionString "           
+                 "From Queries A, Connections B " +
+                 "Where A.ConnectionId = B.Id " + 
+                 "  And A.Id = " + Id)
+        data = database.getData(self.connectionStringMeta, query)
+        
         # Clear entries
         self.entryQueryName.delete(0, tk.END)
         self.textParameterQuery.delete(1.0, tk.END)
@@ -58,10 +63,15 @@ class PyData(ttk.Frame):
             # Fill in Database
             if data.ConnectionName[0] is not None:
                 self.DatabaseName.set(data.ConnectionName[0].strip())
+                self.connectionId.set(str(data.ConnectionId[0]))
             
             # Fill in Name
             if data.QueryName[0] is not None:
                 self.entryQueryName.insert(0, data.QueryName[0].strip())
+            
+            # Fill in AutoFetchParameters
+            self.autoFetchParameters.set(int(data.AutoFetchParameters[0]))
+            self.showSqlParameters()
             
             # Fill in ParameterQuery
             if data.SQL_Parameters[0] is not None:
@@ -77,7 +87,9 @@ class PyData(ttk.Frame):
     def findQuery(self):         
          # Ask new text
         queryName = simpledialog.askstring("Find query", "Query name?", initialvalue=self.entryQueryName.get(), parent=self)
-        
+        query = "Select Id From Queries Where QueryName = '" + queryName + "'"
+        data = database.getData(self.connectionStringMeta, query)
+        self.treeviewQueries.selectItem(data.Id[0])
         
     #%% Actions to do when a treeview item is selected in the Query Tree
 #    def editQuery(self, event):
@@ -100,16 +112,57 @@ class PyData(ttk.Frame):
             self.showData()
         except:  
             messagebox.showerror("getData failed", sys.exc_info()[1])
+    
+    def save(self):
+        # Write update query
+        query = ("Update Queries set " +
+                 " [QueryName]           = '" + self.entryQueryName.get() + "'" 
+                 ",[ConnectionId]        =  " + self.connectionId.get() + 
+                 ",[SQL_Data]            = '" + database.text(self.textQuery.get(1.0, tk.END)) + "'" + 
+                 ",[SQL_Parameters]      = '" + database.text(self.textParameterQuery.get(1.0, tk.END)) + "'" + 
+                 ",[AutoFetchParameters] =  " + str(self.autoFetchParameters.get()) +
+                 ",[UserId]              = '" + getpass.getuser() + "'" + 
+                 ",[TimeChanged]         = '" + str(datetime.datetime.now()) + "' " + 
+                 "Where Id = " + self.treeviewQueries.Id)
+        # Execute update query
+        database.setData(self.connectionStringMeta, query)
+    
+    def saveAs(self):
+        pass
+
+    def selectDatabase(self):
+        # Creat top level window
+        self.toplevel = tk.Toplevel()
+        # Add Database management widget
+        self.pyDatabases = PyDatabases(self.toplevel, connectionStringMeta=self.connectionStringMeta, connectionId=self.connectionId.get())
+        self.pyDatabases.grid(row=0, column=0, columnspan=3, sticky=tk.NW+tk.SE)
+        # Add OK button
+        buttonOK = tk.Button(self.toplevel, text="   OK   ", width=8, command=self.databasesOK)
+        buttonOK.grid(row=1, column=1, sticky=tk.SE, padx=5, pady=5)
+        # Add Cancel button
+        buttonCancel = tk.Button(self.toplevel, text="Cancel", width=8, command=self.databasesCancel)
+        buttonCancel.grid(row=1, column=2, sticky=tk.SE, padx=5, pady=5)
         
+    def databasesOK(self):
+        print(self.pyDatabases.entryName.get())
+        print(self.pyDatabases.Id.get())
+        print(self.pyDatabases.connectionStringData)
+        
+        self.DatabaseName.set(self.pyDatabases.entryName.get())
+        self.connectionId.set(self.pyDatabases.Id.get())
+        self.connectionStringData = self.pyDatabases.connectionStringData
+        self.toplevel.destroy()
+
+    def databasesCancel(self):
+        self.toplevel.destroy()
+
     #%% Actions to do when a treeview item is selected in the Query Tree
     def selectTable(self, event):
         # Get selected tree item
         Id = self.treeviewTablesAndViews.Id
         
         # Get corresponding info from database
-        self.connectionMeta = pyodbc.connect(self.connectionStringMeta)
-        data = pd.io.sql.read_sql("Select * From Tables Where Id = " + Id, self.connectionMeta)
-        
+        data = database.getData(self.connectionStringMeta,"Select * From Tables Where Id = " + Id)
         # Clear entries
         #self.entryQueryName.delete(0, tk.END)
 
@@ -117,7 +170,14 @@ class PyData(ttk.Frame):
         #if data.QueryName[0] is not None:
         #    self.entryQueryName.insert(0, data.QueryName[0])
 
-    # Show or hide the table
+    # Show or hide the Parameters query
+    def showSqlParameters(self):
+        if self.autoFetchParameters.get() == 1:
+            self.textParameterQuery.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        else:
+            self.textParameterQuery.grid_forget()
+
+    # Show or hide the Parameters table
     def showParameters(self):
         if self.checkboxParameters.get() == 1:
             self.Parameters.grid(row=2, column=0, sticky=tk.NW + tk.SE)
@@ -145,13 +205,11 @@ class PyData(ttk.Frame):
         self.showSettings()
         
     def createPythonData(self):
-#        eval("global " + self.pythonVar.get())
-#        eval(self.pythonVar.get() + " = self.pyTable.data")
-#        messagebox.showinfo("Info","pandas dataframe saved as " + self.pythonVar.get())
-        global df 
-        df = self.pyTable.data
-        messagebox.showinfo("Info","pandas dataframe saved as " + self.pythonVar.get())
+        var = self.pythonVar.get()
         
+        self.dataframes[var] = self.pyTable.data
+
+        messagebox.showinfo("Info","pandas dataframe saved as " + var)        
         
     #%% Create widgets
     def createWidgets(self):
@@ -234,8 +292,11 @@ class PyData(ttk.Frame):
         styleLeftAligned = ttk.Style()
         styleLeftAligned.configure('LeftAligned.TButton', foreground='maroon', justify=tk.LEFT)
         ttk.Label(self, text = "Database:").grid(row = 0, column = 2, sticky = tk.NE, padx =5, pady=5)
-        self.buttonDatabase = ttk.Button(self, text = "Select database", textvariable=self.DatabaseName, style='LeftAligned.TButton')
+        self.buttonDatabase = ttk.Button(self, text = "Select database", textvariable=self.DatabaseName, style='LeftAligned.TButton', command=self.selectDatabase)
         self.buttonDatabase.grid(row = 0, column = 3, columnspan=4, sticky = tk.W + tk.E, padx =5, pady=5)
+        self.connectionId = tk.StringVar()
+        self.connectionId.set("0")
+        ttk.Label(self, textvariable=self.connectionId).grid(row = 0, column = 7, sticky = tk.W + tk.E, padx =5, pady=5)
         
         # Query name
         ttk.Label(self, text = "Query:").grid(row=1, column=2, sticky=tk.E, padx=5, pady=0)
@@ -263,7 +324,7 @@ class PyData(ttk.Frame):
         self.textParameterQuery.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =1, pady=1)
 
         #  Query 
-        self.textQuery = ScrolledText(self.frameQuery, height=20)
+        self.textQuery = ScrolledText(self.frameQuery, height=10)
         self.textQuery.grid(row = 1, column = 0, sticky = tk.NE + tk.SW, padx =1, pady=1)
 
         #  Columns tab page
@@ -297,7 +358,7 @@ class PyData(ttk.Frame):
         # Auto fetch parameters checkbox
         self.autoFetchParameters = tk.IntVar() 
         self.autoFetchParameters.set(1)       
-        ttk.Checkbutton(self, text='Auto fetch parameters', variable=self.autoFetchParameters).grid(row = 0, column = 10, columnspan=2, sticky = tk.E, padx =5, pady=5)
+        ttk.Checkbutton(self, text='Auto fetch parameters', variable=self.autoFetchParameters, command=self.showSqlParameters).grid(row = 0, column = 10, columnspan=2, sticky = tk.E, padx =5, pady=5)
         
         ttk.Button(self, text='Guess').grid(row = 0, column = 12, sticky = tk.W, padx =5, pady=5)
         
@@ -309,8 +370,8 @@ class PyData(ttk.Frame):
         self.pyTable.grid_forget()
         
         ttk.Button(self, text = "Run", command=self.runQuery).grid(row = 12, column = 2, sticky = tk.W, padx =5, pady=5)
-        ttk.Button(self, text = "Save").grid(row = 12, column = 3, sticky = tk.W, padx =5, pady=5)
-        ttk.Button(self, text = "Save as...").grid(row = 12, column = 4, sticky = tk.W, padx =5, pady=5)
+        ttk.Button(self, text = "Save", command=self.save).grid(row = 12, column = 3, sticky = tk.W, padx =5, pady=5)
+        ttk.Button(self, text = "Save as...", command=self.saveAs).grid(row = 12, column = 4, sticky = tk.W, padx =5, pady=5)
 
         ttk.Label(self, text = "Variable").grid(row = 12, column = 6, sticky = tk.W, padx =5, pady=5)
         self.pythonVar = tk.StringVar()
