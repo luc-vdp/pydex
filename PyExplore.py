@@ -10,16 +10,18 @@ pydex - Python Data Exploration Tool - Explore
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.scrolledtext import ScrolledText
+from tkinter import messagebox
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 import pandas as pd
+import seaborn as sb
 
 class PyExplore(ttk.Frame):
     def __init__(self, master = None, dataframes = None):
         # Construct the Frame object.
         ttk.Frame.__init__(self, master)
         # Bind click event
-        self.bind('<Button-1>', self.click)
+        self.bind_all('<Button-1>', self.click)
         # Place the main frame on the grid
         self.grid(sticky=tk.N+tk.S+tk.E+tk.W)
         # Store dataframes
@@ -29,34 +31,80 @@ class PyExplore(ttk.Frame):
         
     # Callback function - Clicked somewhere
     def click(self, event):
-        print(self.focus_get())
+        try:
+            if self.focus_get() == self.entryY:
+                self.selectedVar.set('Y')
+            elif self.focus_get() == self.entryX:
+                self.selectedVar.set('X')
+            elif self.focus_get() == self.entryS:
+                self.selectedVar.set('S')
+            elif self.focus_get() == self.entryG:
+                self.selectedVar.set('G')
+        except:
+            pass
         
-        if self.focus_get() == self.entryY:
-            self.selectedVar.set('Y')
-        elif self.focus_get() == self.entryX:
-            self.selectedVar.set('X')
-        elif self.focus_get() == self.entryS:
-            self.selectedVar.set('S')
-        elif self.focus_get() == self.entryG:
-            self.selectedVar.set('G')
+    def histogram(self):
+        #Show properties frame for histogram (and hide others)
+#        frameHistogram.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
+#        frameTrend.pack_forget()
+#        frameScatter.pack_forget()
+#        frameBargraph.pack_forget()
+#        frameBoxplot.pack_forget()
+        # Clear labelExplanation
+#        labelExplanation['text'] = ''
+        # Show histogram
+        self.ax.clear() 
+        self.ax.set_xlabel(self.entryY.get())
+        
+        if self.cumulative.get():
+            if len(self.entryBins.get()) > 0:
+                sb.distplot(self.values(self.entryY).dropna(), bins=int(self.entryBins.get()), hist_kws={'cumulative': True}, kde_kws={'cumulative': True}, ax=self.ax)
+            else:
+                sb.distplot(self.values(self.entryY).dropna(), hist_kws={'cumulative': True}, kde_kws={'cumulative': True}, ax=self.ax)
+        else:
+            if len(self.entryBins.get()) > 0:
+                sb.distplot(self.values(self.entryY).dropna(), bins=int(self.entryBins.get()), ax=self.ax)
+            else:
+                sb.distplot(self.values(self.entryY).dropna(), ax=self.ax)              
+        self.ax.grid(True)
+        self.canvas.show()  
 
-    def histogram():
+    def trend(self):
         pass
 
-    def trend():
+    def scatter(self):
         pass
 
-    def scatter():
+    def bargraph(self):
         pass
 
-    def bargraph():
+    def boxplot(self):
         pass
 
-    def boxplot():
-        pass
+    def showGraph(self):
+        if self.graphtype.get() == 'H': 
+            self.histogram()
+        elif self.graphtype.get() == 'T': 
+            self.trend()
+        elif self.graphtype.get() == 'S': 
+            self.scatter()
+        elif self.graphtype.get() == 'R': 
+            self.bargraph()
+        elif self.graphtype.get() == 'B': 
+            self.boxplot()
 
-    def showGraph():
-        pass
+    def values(self, obj):
+        if len(self.entryS.get()) > 0:
+            # values, filtered
+            data = eval('(' + obj.get() + ')[' + self.entryS.get() +']')
+        else:
+            # values, without filter
+            data = eval('(' + obj.get() + ')')
+        # Show error message if no values found
+        if data.count() == 0:
+            messagebox.showinfo('Error','No data found')
+        # return data
+        return data
 
     def listVars(self):
         if self.dataframes != None:
@@ -86,7 +134,37 @@ class PyExplore(ttk.Frame):
                 for item in vars:
                     #if search_term.lower() in item.lower():
                     self.listboxColumns.insert(tk.END, item)
-                
+
+    # Callback function - Add selected variable
+    def SelectColumn(self, event):
+        if self.selectedVar.get() == 'Y': 
+            self.addVar(self.entryY)
+        elif self.selectedVar.get() == 'X': 
+            self.addVar(self.entryX)
+        elif self.selectedVar.get() == 'S': 
+            self.addVar(self.entryS)
+            self.entryS.insert(tk.END, '>0')
+        elif self.selectedVar.get() == 'G': 
+            self.addVar(self.entryG)
+        self.showGraph()
+            
+    # Add selected variable to selected text box
+    def addVar(self,entry):
+        varname = self.comboboxDataframes.get() + '.' + self.listboxColumns.get(self.listboxColumns.curselection())
+        if len(entry.get()) == 0:
+            # If nothing yet there, simply add the variable
+            entry.insert(0, varname)
+        elif entry.get()[-1] in ',+-*/':
+            # If there is something already and it ends with , or + or - or * or /, then add the variable
+            entry.insert(tk.END, ' ' + varname)
+        elif entry.get()[-1] in ' ':
+            # If there is something already and there is an extra space, then add the variable
+            entry.insert(tk.END, varname)
+        else:      
+            # replace the existing text
+            entry.delete(0, tk.END)
+            entry.insert(0, varname)
+
     # Callback function - Show Python code
     def code(self):
         if self.buttonCode.cget('text') == 'Show Code':
@@ -103,9 +181,6 @@ class PyExplore(ttk.Frame):
         # Make it stretchable         
         self.top.rowconfigure(0, weight=1)
         self.top.columnconfigure(0, weight=1)
-
-        # Make row 10 stretchable         
-#        self.rowconfigure(10, weight=1)
 
         # Make certain rows and columns stretchable
         self.rowconfigure(0, weight=1)        
@@ -129,9 +204,10 @@ class PyExplore(ttk.Frame):
         self.panedwindowMain.add(self.frameMiddle)
         self.panedwindowMain.paneconfigure(self.frameMiddle, sticky=tk.NW+tk.SE)
         # Make frameMiddle stretchable
+        #self.frameMiddle.rowconfigure(0, weight=1)
         self.frameMiddle.rowconfigure(1, weight=1)
         self.frameMiddle.columnconfigure(8, weight=1)
-
+        
         # Create frameRight and add it to the paned window
         self.frameRight = ttk.Frame(self.panedwindowMain)
         self.panedwindowMain.add(self.frameRight)
@@ -159,7 +235,7 @@ class PyExplore(ttk.Frame):
         self.listboxColumns = tk.Listbox(self.frameListbox, yscrollcommand=self.scrollbarColumns.set)
         self.scrollbarColumns.config(command=self.listboxColumns.yview)
         self.scrollbarColumns.grid(row=0, column=1, sticky =tk.NW+tk.SE)
-        #self.listboxColumns.bind('<<ListboxSelect>>',self.SelectColumn)
+        self.listboxColumns.bind('<<ListboxSelect>>',self.SelectColumn)
         self.listboxColumns.grid(row=0, column = 0, sticky = tk.NE + tk.SW)
 
         # Search field
@@ -170,8 +246,41 @@ class PyExplore(ttk.Frame):
         self.entryFind = ttk.Entry(self.frameLeft, textvariable=self.searchValue)
         self.entryFind.grid(row = 14, column = 1, columnspan=2, sticky=tk.W+tk.E, padx =5, pady=5)
 
-        # Properties
-        ttk.Label(self.frameLeft, text = "Properties").grid(row = 15, column = 0, sticky = tk.W, padx =5, pady=5)
+        # Properties frame
+        self.frameProperties = ttk.Frame(self.frameLeft, relief='ridge', borderwidth=4)
+        self.frameProperties.grid(row = 15, column = 0, columnspan=3, sticky = tk.W, padx =5, pady=5)
+        
+        # Properties panel Histogram
+        self.frameHistogram = ttk.Frame(self.frameProperties)
+        self.frameHistogram.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.labelHistogram = ttk.Label(self.frameHistogram, text='number of bins:')
+        self.labelHistogram.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.entryBins = ttk.Entry(self.frameHistogram)
+        self.entryBins.grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.histtype = tk.StringVar() 
+        self.histtype.set('H')
+        self.optionHist   = ttk.Radiobutton(self.frameHistogram, text='Histogram ', variable=self.histtype, value='H', command=self.histogram)
+        self.optionStairs = ttk.Radiobutton(self.frameHistogram, text='Stairs    ', variable=self.histtype, value='T', command=self.histogram)
+        self.optionHist.grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        self.optionStairs.grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.cumulative = tk.IntVar()
+        self.checkCumulative = ttk.Checkbutton(self.frameHistogram, text='Cumulative', variable=self.cumulative, command=self.histogram)
+        self.checkCumulative.grid(row=4, column=0, sticky=tk.W, padx=5, pady=5)
+            
+        self.percentage = tk.IntVar()
+        self.checkPercentage = ttk.Checkbutton(self.frameHistogram, text='Percentage', variable=self.percentage, command=self.histogram)
+        self.checkPercentage.grid(row=5, column=0, sticky=tk.W, padx=5, pady=5)
+            
+        self.histtest = tk.IntVar()
+        self.checkHisttest = ttk.Checkbutton(self.frameHistogram, text='t-test + F-test/Z-test', variable=self.histtest, command=self.histogram)
+        self.checkHisttest.grid(row=6, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        
+                
         
         #%% MIDDLE
         # Chart type
@@ -193,13 +302,13 @@ class PyExplore(ttk.Frame):
         self.panedwindowMiddle.grid(row = 1, column = 0, columnspan=11, sticky = tk.NE + tk.SW, padx =1, pady=1)
         
         # Create matplotlib figure and add it to frameMiddle
-        self.fig = Figure(figsize=(10, 8), tight_layout=True)
+        self.fig = Figure(figsize=(10, 7), tight_layout=True)
 
         self.ax1 = self.fig.add_subplot(1,1,1)
         self.ax1.set_title('title 1')
         self.ax1.set_xlabel( 'X-axis' )
         self.ax1.set_ylabel( 'Y-axis' )
-        self.ax1.grid(True)
+        #self.ax1.grid(True)
         
 #        self.ax2 = self.fig.add_subplot(2,2,2)
 #        self.ax2.set_title('title 2')
@@ -217,10 +326,12 @@ class PyExplore(ttk.Frame):
         self.ax.set_facecolor('#FFFFE0')
                                
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.frameMiddle)
-        self.canvas.show()
-        self.canvas.draw()
+        #self.canvas.show()
+        #self.canvas.draw()
+
         self.panedwindowMiddle.paneconfigure(self.canvas.get_tk_widget(), sticky=tk.NW+tk.SE)
         self.panedwindowMiddle.add(self.canvas.get_tk_widget())   
+
         #self.cid = self.canvas.mpl_connect('button_press_event', self)
 
         # Create frameSelection and add it to the paned window
@@ -255,9 +366,9 @@ class PyExplore(ttk.Frame):
         self.textInfo = ScrolledText(self.frameSelection, height=4) 
         self.textInfo.grid(row=4, column=0, columnspan=2, sticky = tk.NE + tk.SW, padx =1, pady=1)
 
+        self.panedwindowMiddle.add(self.frameSelection, minsize=80)
         self.panedwindowMiddle.paneconfigure(self.frameSelection, sticky=tk.NW+tk.SE)
-        self.panedwindowMiddle.add(self.frameSelection, minsize=100)
-        
+
 #        # Text area for Info
 #        self.textInfo = ScrolledText(self.panedwindowMiddle, height=4) 
 #        self.panedwindowMiddle.add(self.textInfo)
