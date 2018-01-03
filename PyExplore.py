@@ -2,7 +2,7 @@
 """
 pydex - Python Data Exploration Tool - Explore
 
-@date: 2017-12-08
+@date: 2018-01-03
 
 @author: luc.vandeputte@arcelormittal.com
 """
@@ -12,16 +12,33 @@ import tkinter.ttk as ttk
 from tkinter.scrolledtext import ScrolledText
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
+import pandas as pd
 
 class PyExplore(ttk.Frame):
     def __init__(self, master = None, dataframes = None):
         # Construct the Frame object.
         ttk.Frame.__init__(self, master)
+        # Bind click event
+        self.bind('<Button-1>', self.click)
+        # Place the main frame on the grid
         self.grid(sticky=tk.N+tk.S+tk.E+tk.W)
         # Store dataframes
         self.dataframes = dataframes
         # Create widgets
         self.createWidgets()
+        
+    # Callback function - Clicked somewhere
+    def click(self, event):
+        print(self.focus_get())
+        
+        if self.focus_get() == self.entryY:
+            self.selectedVar.set('Y')
+        elif self.focus_get() == self.entryX:
+            self.selectedVar.set('X')
+        elif self.focus_get() == self.entryS:
+            self.selectedVar.set('S')
+        elif self.focus_get() == self.entryG:
+            self.selectedVar.set('G')
 
     def histogram():
         pass
@@ -42,19 +59,34 @@ class PyExplore(ttk.Frame):
         pass
 
     def listVars(self):
-        self.comboboxDataframes['values'] = list(self.dataframes.keys())
+        if self.dataframes != None:
+            self.comboboxDataframes['values'] = list(self.dataframes.keys())
+        else:
+            self.comboboxDataframes['values'] = [var for var in globals() if isinstance(eval(var), pd.core.frame.DataFrame)]
         
     def ListColumns(self, event):
+        # Clear list
         self.listboxColumns.delete(0, tk.END)
+        # Get selected dataframe name
         df = self.comboboxDataframes.get()
         if df != '':
-            vars = self.dataframes[df].columns.values
-            # Filtering listbox using search term from searchValue box 
-            search_term = self.searchValue.get()
-            for item in vars:
-                if search_term.lower() in item.lower():
+            try:
+                vars = self.dataframes[df].columns.values
+                # Filtering listbox using search term from searchValue box 
+                search_term = self.searchValue.get()
+                for item in vars:
+                    if search_term.lower() in item.lower():
+                        self.listboxColumns.insert(tk.END, item)
+            except:
+#                vars = eval(self.comboboxDataframes.get()).columns.values
+                self.dataframes = {}
+                self.dataframes[df] = eval(self.comboboxDataframes.get())
+                vars = self.dataframes[df].columns.values
+                # Filtering listbox using search term from textSearch box 
+                for item in vars:
+                    #if search_term.lower() in item.lower():
                     self.listboxColumns.insert(tk.END, item)
- 
+                
     # Callback function - Show Python code
     def code(self):
         if self.buttonCode.cget('text') == 'Show Code':
@@ -63,20 +95,7 @@ class PyExplore(ttk.Frame):
         else:
             self.panedwindowMain.forget(self.frameRight)
             self.buttonCode.configure(text = 'Show Code')
-        
-        
-    # Callback function - Clicked somewhere
-#    def click(event):
-#        if self.focus_get() == textY:
-#            selectedVar.set('Y')
-#        elif self.focus_get() == textX:
-#            selectedVar.set('X')
-#        elif self.focus_get() == textS:
-#            selectedVar.set('S')
-#        elif self.focus_get() == textG:
-#            selectedVar.set('G')
-
-           
+                   
     def createWidgets(self):  
         # Get top window 
         self.top = self.winfo_toplevel()
@@ -202,25 +221,35 @@ class PyExplore(ttk.Frame):
         self.canvas.draw()
         self.panedwindowMiddle.paneconfigure(self.canvas.get_tk_widget(), sticky=tk.NW+tk.SE)
         self.panedwindowMiddle.add(self.canvas.get_tk_widget())   
-        self.cid = self.canvas.mpl_connect('button_press_event', self)
+        #self.cid = self.canvas.mpl_connect('button_press_event', self)
 
         # Create frameSelection and add it to the paned window
         self.frameSelection = ttk.Frame(self.panedwindowMiddle, relief='ridge', borderwidth=4)
         # Make frameSelection stretchable
         self.frameSelection.rowconfigure(4, weight=1)
         self.frameSelection.columnconfigure(1, weight=1)
+                
         # Y, X, Select and Group by labels
         self.selectedVar = tk.StringVar()
         self.selectedVar.set('Y')
-        ttk.Radiobutton(self.frameSelection, text='Y       ', variable=self.selectedVar, value='Y').grid(row=0, column=0, sticky = tk.NE + tk.SW, padx =1, pady=1)
-        ttk.Radiobutton(self.frameSelection, text='X       ', variable=self.selectedVar, value='X').grid(row=1, column=0, sticky = tk.NE + tk.SW, padx =1, pady=1)
-        ttk.Radiobutton(self.frameSelection, text='Select  ', variable=self.selectedVar, value='S').grid(row=2, column=0, sticky = tk.NE + tk.SW, padx =1, pady=1)
-        ttk.Radiobutton(self.frameSelection, text='Group by', variable=self.selectedVar, value='G').grid(row=3, column=0, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.radiobuttonY = ttk.Radiobutton(self.frameSelection, text='Y       ', variable=self.selectedVar, value='Y')
+        self.radiobuttonY.grid(row=0, column=0, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.radiobuttonX = ttk.Radiobutton(self.frameSelection, text='X       ', variable=self.selectedVar, value='X')
+        self.radiobuttonX.grid(row=1, column=0, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.radiobuttonS = ttk.Radiobutton(self.frameSelection, text='Select  ', variable=self.selectedVar, value='S')
+        self.radiobuttonS.grid(row=2, column=0, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.radiobuttonG = ttk.Radiobutton(self.frameSelection, text='Group by', variable=self.selectedVar, value='G')
+        self.radiobuttonG.grid(row=3, column=0, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        
         # Y, X, Select and Group by entries
-        self.textY = ttk.Entry(self.frameSelection).grid(row=0, column=1, sticky = tk.NE + tk.SW, padx =1, pady=1)
-        self.textX = ttk.Entry(self.frameSelection).grid(row=1, column=1, sticky = tk.NE + tk.SW, padx =1, pady=1)
-        self.textS = ttk.Entry(self.frameSelection).grid(row=2, column=1, sticky = tk.NE + tk.SW, padx =1, pady=1)
-        self.textG = ttk.Entry(self.frameSelection).grid(row=3, column=1, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.entryY = ttk.Entry(self.frameSelection)
+        self.entryY.grid(row=0, column=1, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.entryX = ttk.Entry(self.frameSelection)
+        self.entryX.grid(row=1, column=1, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.entryS = ttk.Entry(self.frameSelection)
+        self.entryS.grid(row=2, column=1, sticky = tk.NE + tk.SW, padx =1, pady=1)
+        self.entryG = ttk.Entry(self.frameSelection)
+        self.entryG.grid(row=3, column=1, sticky = tk.NE + tk.SW, padx =1, pady=1)
         
         # Text area for Info
         self.textInfo = ScrolledText(self.frameSelection, height=4) 
@@ -233,8 +262,7 @@ class PyExplore(ttk.Frame):
 #        self.textInfo = ScrolledText(self.panedwindowMiddle, height=4) 
 #        self.panedwindowMiddle.add(self.textInfo)
 #        self.panedwindowMiddle.paneconfigure(self.textInfo, sticky=tk.NW+tk.SE)
-
-        
+       
         #%% RIGHT
         # Code
         ttk.Label(self.frameRight, text = "Code").grid(row = 0, column = 0, sticky = tk.NW+tk.SE, padx =5, pady=5)
@@ -246,4 +274,3 @@ class PyExplore(ttk.Frame):
 # Allow the class to run stand-alone.
 if __name__ == "__main__":
     PyExplore().mainloop()
-
