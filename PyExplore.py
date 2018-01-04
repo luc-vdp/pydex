@@ -15,6 +15,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #, NavigationToo
 from matplotlib.figure import Figure
 import pandas as pd
 import seaborn as sb
+import statsmodels.api as sm
 
 class PyExplore(ttk.Frame):
     def __init__(self, master = None, dataframes = None):
@@ -45,11 +46,11 @@ class PyExplore(ttk.Frame):
         
     def histogram(self):
         #Show properties frame for histogram (and hide others)
-#        frameHistogram.pack(side=tk.BOTTOM, anchor=tk.SW, fill=tk.Y, pady=4)
-#        frameTrend.pack_forget()
-#        frameScatter.pack_forget()
-#        frameBargraph.pack_forget()
-#        frameBoxplot.pack_forget()
+        self.frameHistogram.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.frameTrend.grid_forget()
+        self.frameScatter.grid_forget()
+        self.frameBargraph.grid_forget()
+        self.frameBoxplot.grid_forget()
         # Clear labelExplanation
 #        labelExplanation['text'] = ''
         # Show histogram
@@ -70,16 +71,112 @@ class PyExplore(ttk.Frame):
         self.canvas.show()  
 
     def trend(self):
-        pass
+        # Show properties frame for trend (and hide others)
+        self.frameTrend.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.frameHistogram.grid_forget()
+        self.frameScatter.grid_forget()
+        self.frameBargraph.grid_forget()
+        self.frameBoxplot.grid_forget()
+#        # Clear labelExplanation
+#        labelExplanation['text'] = ''
+        # Show trend
+        self.ax.clear() 
+        self.ax.set_xlabel(self.entryX.get())
+        self.ax.set_ylabel(self.entryY.get())
+        if len(self.entryX.get()) > 0:
+            self.ax.plot(self.values(self.entryX),self.values(self.entryY))
+        else:
+            self.ax.plot(eval(self.comboboxDataframes.get() + '.index.get_values()'),self.values(self.entryY))
+            
+        self.ax.grid(True)
+        self.canvas.show()
+        return
 
     def scatter(self):
-        pass
-
+        # Show properties frame for scatter graph (and hide others)
+        self.frameScatter.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.frameHistogram.grid_forget()
+        self.frameTrend.grid_forget()
+        self.frameBargraph.grid_forget()
+        self.frameBoxplot.grid_forget()
+        # Clear labelExplanation
+#        labelExplanation['text'] = ''
+        # Show trend
+        self.ax.clear() 
+        self.ax.set_xlabel(self.entryX.get())
+        self.ax.set_ylabel(self.entryY.get())
+        if len(self.entryX.get()) > 0:
+            self.ax.scatter(self.values(self.entryX),self.values(self.entryY))
+            #Add bissectrice
+            if self.bissectrice.get()==1:
+                self.ax.plot(self.values(self.entryX),self.values(self.entryX),'k')
+            #Add regression
+            if self.regression.get()==1:
+                y = self.values(self.entryY)
+                x = self.values(self.entryX)
+                s = (~y.isnull()) & (~x.isnull())
+                y = y[s]
+                x = x[s]
+                X = sm.add_constant(x)
+                model = sm.OLS(y,X).fit()
+                self.ax.plot(x,model.predict(X),'r')
+                #messagebox.showinfo("Regression info", model.summary())
+#                labelExplanation['text'] = str(model.summary())
+        else:
+            self.ax.scatter(eval(self.comboboxDataframes.get() + '.index.get_values()'),self.values(self.entryY))
+        self.ax.grid(True)
+        self.canvas.show()
+        return
+        
     def bargraph(self):
-        pass
-
+        # Show properties frame for bar graph (and hide others)
+        self.frameBargraph.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.frameHistogram.grid_forget()
+        self.frameTrend.grid_forget()
+        self.frameScatter.grid_forget()
+        self.frameBoxplot.grid_forget()
+        # Clear labelExplanation
+#        labelExplanation['text'] = ''
+        # Show trend
+        self.ax.clear() 
+        self.ax.set_xlabel(self.entryX.get())
+        self.ax.set_ylabel(self.entryY.get())
+        if len(self.entryX.get()) == 0:
+            sb.barplot(y=self.values(self.entryY),ax=self.ax)
+        elif len(self.entryY.get()) == 0:
+            sb.barplot(x=self.values(self.entryY),ax=self.ax)
+        elif len(self.values(self.entryX).unique()) < 100:
+            sb.barplot(x=self.values(self.entryX),y=self.values(self.entryY),ax=self.ax)
+        else:
+            messagebox.showinfo('Warning','Too many categories')
+        self.ax.grid(True)
+        self.canvas.show()
+        return
+    
     def boxplot(self):
-        pass
+        # Show properties frame for boxplot (and hide others)
+        self.frameBoxplot.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.frameHistogram.grid_forget()
+        self.frameTrend.grid_forget()
+        self.frameScatter.grid_forget()
+        self.frameBargraph.grid_forget()
+        # Clear labelExplanation
+#        labelExplanation['text'] = ''
+        # Show trend
+        self.ax.clear() 
+        self.ax.set_xlabel(self.entryX.get())
+        self.ax.set_ylabel(self.entryY.get())
+        if len(self.entryX.get()) == 0:
+            sb.boxplot(y=self.values(self.entryY),notch=True,ax=self.ax)
+        elif len(self.entryY.get()) == 0:
+            sb.boxplot(x=self.values(self.entryY),notch=True,ax=self.ax)
+        elif len(self.values(self.entryX).unique()) < 100:
+            sb.boxplot(x=self.values(self.entryX),y=self.values(self.entryY),notch=True,ax=self.ax)
+        else:
+            messagebox.showinfo('Warning','Too many categories')
+        self.ax.grid(True)
+        self.canvas.show()
+        return
 
     def showGraph(self):
         if self.graphtype.get() == 'H': 
@@ -250,7 +347,7 @@ class PyExplore(ttk.Frame):
         self.frameProperties = ttk.Frame(self.frameLeft, relief='ridge', borderwidth=4)
         self.frameProperties.grid(row = 15, column = 0, columnspan=3, sticky = tk.W, padx =5, pady=5)
         
-        # Properties panel Histogram
+        # Properties frame Histogram
         self.frameHistogram = ttk.Frame(self.frameProperties)
         self.frameHistogram.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         
@@ -279,8 +376,56 @@ class PyExplore(ttk.Frame):
         self.checkHisttest = ttk.Checkbutton(self.frameHistogram, text='t-test + F-test/Z-test', variable=self.histtest, command=self.histogram)
         self.checkHisttest.grid(row=6, column=0, sticky=tk.W, padx=5, pady=5)
         
+        # Properties frame Trend 
+        self.frameTrend = ttk.Frame(self.frameProperties)
+        self.frameTrend.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         
+        self.movingFunction = tk.IntVar()
+        self.checkMoving = ttk.Checkbutton(self.frameTrend, text='Moving function', variable=self.movingFunction, command=self.trend)
+        self.checkMoving.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.frameTrend.grid_forget()
+        
+        # Properties frame Scatter
+        self.frameScatter = ttk.Frame(self.frameProperties)
+        self.frameScatter.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.bissectrice = tk.IntVar()
+        self.checkBissectrice = ttk.Checkbutton(self.frameScatter, text='Bissectrice', variable=self.bissectrice, command=self.scatter)
+        self.checkBissectrice.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.regression = tk.IntVar()
+        self.checkRegression = ttk.Checkbutton(self.frameScatter, text='Regression', variable=self.regression, command=self.scatter)
+        self.checkRegression.grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.frameScatter.grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+
+        # Properties panel Bargraph
+        self.frameBargraph = ttk.Frame(self.frameProperties)
+        self.frameBargraph.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.labelAggregateFunction = ttk.Label(self.frameBargraph, text='Function')
+        self.labelAggregateFunction.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.comboboxAggregateFunction = ttk.Combobox(self.frameBargraph)
+        self.listFunctions = ['count','mean','sum','min','max','stdev']
+        self.comboboxAggregateFunction['values'] = self.listFunctions
+        self.comboboxAggregateFunction.grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
                 
+        self.frameBargraph.grid_forget()
+        
+        # Properties panel Boxplot
+        self.frameBoxplot = ttk.Frame(self.frameProperties)
+        self.frameBoxplot.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.labelStep = ttk.Label(self.frameBoxplot, text='Step')
+        self.labelStep.grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.entryStep = ttk.Entry(self.frameBoxplot)
+        self.entryStep.grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        
+        self.frameBoxplot.grid_forget()
+               
         
         #%% MIDDLE
         # Chart type
