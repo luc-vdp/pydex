@@ -104,7 +104,7 @@ class PyDex(ttk.Frame):
         self.frameData.rowconfigure(0, weight=1)
         self.frameData.columnconfigure(0, weight=1)        
         # Add Data widget
-        self.pyData = PyData(self.frameData, self.connectionStringMeta, self.dataframes, self.connectionId, self.connectionName, self.connectionString)
+        self.pyData = PyData(self.frameData, self.connectionStringMeta, self.dataframes)
         self.pyData.grid(row = 0, column = 0, sticky = tk.NE + tk.SW, padx =5, pady=5)
         self.pyData.bind('<<DatabaseSelect>>', self.selectDatabaseTab)
 

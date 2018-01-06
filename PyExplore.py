@@ -16,6 +16,9 @@ from matplotlib.figure import Figure
 import pandas as pd
 import seaborn as sb
 import statsmodels.api as sm
+import datetime as datetime
+import getpass
+import px as px # Is necessary for the graphs
 
 class PyExplore(ttk.Frame):
     def __init__(self, master = None, dataframes = None):
@@ -51,23 +54,30 @@ class PyExplore(ttk.Frame):
         self.frameScatter.grid_forget()
         self.frameBargraph.grid_forget()
         self.frameBoxplot.grid_forget()
-        # Clear labelExplanation
-#        labelExplanation['text'] = ''
+        # Clear textInfo 
+        self.textInfo.delete('1.0', tk.END)
         # Show histogram
         self.ax.clear() 
         self.ax.set_xlabel(self.entryY.get())
         
-        if self.cumulative.get():
-            if len(self.entryBins.get()) > 0:
-                sb.distplot(self.values(self.entryY).dropna(), bins=int(self.entryBins.get()), hist_kws={'cumulative': True}, kde_kws={'cumulative': True}, ax=self.ax)
-            else:
-                sb.distplot(self.values(self.entryY).dropna(), hist_kws={'cumulative': True}, kde_kws={'cumulative': True}, ax=self.ax)
-        else:
-            if len(self.entryBins.get()) > 0:
-                sb.distplot(self.values(self.entryY).dropna(), bins=int(self.entryBins.get()), ax=self.ax)
-            else:
-                sb.distplot(self.values(self.entryY).dropna(), ax=self.ax)              
-        self.ax.grid(True)
+        # Write code
+        comment = 'Histogram ' + self.entryY.get()
+        code = 'px.histogram(' + self.entryY.get()
+        # Add selection
+        if self.entryS.get() != '': 
+            #comment += '\n# selection = ' + self.entryS.get()
+            #code += ', sel=' + self.entryS.get()
+            code = "sel=" + self.entryS.get() + "\n" + code + ", sel=sel"
+        
+        # Write code
+        self.textCode.insert(tk.END, '\n\n# ' + comment)
+        self.textCode.insert(tk.END, '\n' + code + ')' )
+        
+        # Execute code
+        code += ', ax=self.ax)'
+        exec(code)
+        
+        # Update canvas
         self.canvas.show()  
 
     def trend(self):
@@ -77,8 +87,8 @@ class PyExplore(ttk.Frame):
         self.frameScatter.grid_forget()
         self.frameBargraph.grid_forget()
         self.frameBoxplot.grid_forget()
-#        # Clear labelExplanation
-#        labelExplanation['text'] = ''
+        # Clear textInfo 
+        self.textInfo.delete('1.0', tk.END)
         # Show trend
         self.ax.clear() 
         self.ax.set_xlabel(self.entryX.get())
@@ -99,8 +109,8 @@ class PyExplore(ttk.Frame):
         self.frameTrend.grid_forget()
         self.frameBargraph.grid_forget()
         self.frameBoxplot.grid_forget()
-        # Clear labelExplanation
-#        labelExplanation['text'] = ''
+        # Clear textInfo 
+        self.textInfo.delete('1.0', tk.END)
         # Show trend
         self.ax.clear() 
         self.ax.set_xlabel(self.entryX.get())
@@ -120,8 +130,9 @@ class PyExplore(ttk.Frame):
                 X = sm.add_constant(x)
                 model = sm.OLS(y,X).fit()
                 self.ax.plot(x,model.predict(X),'r')
-                #messagebox.showinfo("Regression info", model.summary())
-#                labelExplanation['text'] = str(model.summary())
+                # Show info
+                self.textInfo.insert('1.0', str(model.summary()))
+
         else:
             self.ax.scatter(eval(self.comboboxDataframes.get() + '.index.get_values()'),self.values(self.entryY))
         self.ax.grid(True)
@@ -135,8 +146,8 @@ class PyExplore(ttk.Frame):
         self.frameTrend.grid_forget()
         self.frameScatter.grid_forget()
         self.frameBoxplot.grid_forget()
-        # Clear labelExplanation
-#        labelExplanation['text'] = ''
+        # Clear textInfo 
+        self.textInfo.delete('1.0', tk.END)
         # Show trend
         self.ax.clear() 
         self.ax.set_xlabel(self.entryX.get())
@@ -160,8 +171,8 @@ class PyExplore(ttk.Frame):
         self.frameTrend.grid_forget()
         self.frameScatter.grid_forget()
         self.frameBargraph.grid_forget()
-        # Clear labelExplanation
-#        labelExplanation['text'] = ''
+        # Clear textInfo 
+        self.textInfo.delete('1.0', tk.END)
         # Show trend
         self.ax.clear() 
         self.ax.set_xlabel(self.entryX.get())
@@ -246,22 +257,36 @@ class PyExplore(ttk.Frame):
         self.showGraph()
             
     # Add selected variable to selected text box
-    def addVar(self,entry):
-        varname = self.comboboxDataframes.get() + '.' + self.listboxColumns.get(self.listboxColumns.curselection())
-        if len(entry.get()) == 0:
-            # If nothing yet there, simply add the variable
-            entry.insert(0, varname)
-        elif entry.get()[-1] in ',+-*/':
-            # If there is something already and it ends with , or + or - or * or /, then add the variable
-            entry.insert(tk.END, ' ' + varname)
-        elif entry.get()[-1] in ' ':
-            # If there is something already and there is an extra space, then add the variable
-            entry.insert(tk.END, varname)
-        else:      
-            # replace the existing text
-            entry.delete(0, tk.END)
-            entry.insert(0, varname)
-
+    def addVar(self, entry):
+        # Get selected indices
+        items = self.listboxColumns.curselection()
+        # Count the selected items
+        n = len(items)
+        # Start with the first
+        i = 1
+        # Add each variable to the entry
+        for item in items:            
+            #varname = self.comboboxDataframes.get() + '.' + self.listboxColumns.get(self.listboxColumns.curselection())
+            varname = self.comboboxDataframes.get() + '.' + self.listboxColumns.get(item)
+            if len(entry.get()) == 0:
+                # If nothing yet there, simply add the variable
+                entry.insert(0, varname)
+            elif entry.get()[-1] in ',+-*/':
+                # If there is something already and it ends with , or + or - or * or /, then add the variable
+                entry.insert(tk.END, ' ' + varname)
+            elif entry.get()[-1] in ' ':
+                # If there is something already and there is an extra space, then add the variable
+                entry.insert(tk.END, varname)
+            else:      
+                # replace the existing text
+                entry.delete(0, tk.END)
+                entry.insert(0, varname)
+            # If it's not the last of the selection, add a comma
+            if i < n:
+                entry.insert(tk.END, ', ')
+            # Increase the counter
+            i += 1
+            
     # Callback function - Show Python code
     def code(self):
         if self.buttonCode.cget('text') == 'Show Code':
@@ -329,7 +354,7 @@ class PyExplore(ttk.Frame):
         self.frameListbox.columnconfigure(0, weight=1)
         # Listview of columns in the dataframe
         self.scrollbarColumns = ttk.Scrollbar(self.frameListbox, orient=tk.VERTICAL)
-        self.listboxColumns = tk.Listbox(self.frameListbox, yscrollcommand=self.scrollbarColumns.set)
+        self.listboxColumns = tk.Listbox(self.frameListbox, selectmode = tk.EXTENDED, yscrollcommand=self.scrollbarColumns.set)
         self.scrollbarColumns.config(command=self.listboxColumns.yview)
         self.scrollbarColumns.grid(row=0, column=1, sticky =tk.NW+tk.SE)
         self.listboxColumns.bind('<<ListboxSelect>>',self.SelectColumn)
@@ -521,12 +546,28 @@ class PyExplore(ttk.Frame):
        
         #%% RIGHT
         # Code
-        ttk.Label(self.frameRight, text = "Code").grid(row = 0, column = 0, sticky = tk.NW+tk.SE, padx =5, pady=5)
+        self.codePath = tk.StringVar()
+        self.codePath.set(r"D:\pydex_" + str(datetime.datetime.today())[0:16].replace('-','_').replace(' ','_').replace(':','') + ".py")
+        ttk.Label(self.frameRight, text = "Code", textvariable=self.codePath).grid(row = 0, column = 0, sticky = tk.NW+tk.SE, padx =5, pady=5)
 
         # Text area for generated code
         self.textCode = ScrolledText(self.frameRight, height=4) 
         self.textCode.grid(row = 1, column = 0, sticky = tk.NW+tk.SE, padx =5, pady=5)
+        self.textCode.insert(tk.END, '""" Data exploration')
+        self.textCode.insert(tk.END, '\n\n')
+        self.textCode.insert(tk.END, '@date: ' + str(datetime.date.today()))
+        self.textCode.insert(tk.END, '\n\n')
+        self.textCode.insert(tk.END, '@author: ' + getpass.getuser())
+        self.textCode.insert(tk.END, '\n"""')
+        self.textCode.insert(tk.END, '\n')
+        self.textCode.insert(tk.END, '\n# Import libraries')
+        self.textCode.insert(tk.END, '\nimport px as px')
+        self.textCode.insert(tk.END, '\n')
+        self.textCode.insert(tk.END, '\n# Get data')
+        self.textCode.insert(tk.END, "\nd = px.dbread('XYZ')")
 
 # Allow the class to run stand-alone.
 if __name__ == "__main__":
-    PyExplore().mainloop()
+    app = PyExplore() 
+    app.master.title('PyExplore - Python Data Exploration Tool - version 0.1')
+    app.mainloop()

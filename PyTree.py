@@ -43,8 +43,9 @@ class PyTree(ttk.Frame):
         self.createWidgets()
     
         # Define events
-        self.treeview.bind('<<TreeviewSelect>>', self.selectItem)
-        self.treeview.bind('<Double-Button-1>', self.executeItem)
+        self.treeview.bind('<<TreeviewSelect>>', self.selectTreeItem)
+        self.treeview.bind('<<TreeviewEdit>>', self.editTreeItem)
+        self.treeview.bind('<Double-Button-1>', self.executeTreeItem)
         self.treeview.bind("<Button-3>", self.popupMenu)
         
         # Initialize variable
@@ -83,14 +84,14 @@ class PyTree(ttk.Frame):
             self.popup.grab_release()
    
     # Actions to do when a treeview item is selected
-    def selectItem(self, event):
+    def selectTreeItem(self, event):
         # Get selected tree item
         self.Id = self.treeview.focus()
         # Propagate the event
-        self.master.event_generate('<<TreeviewSelect>>')
-
+        self.master.event_generate('<<TreeviewSelect>>') 
+        
     # Actions to do when a treeview item is double clicked
-    def executeItem(self, event):
+    def executeTreeItem(self, event):
         # Get selected tree item
         self.Id = self.treeview.focus()
         # Propagate the event

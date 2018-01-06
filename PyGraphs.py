@@ -12,10 +12,11 @@ import tkinter.ttk as ttk
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg #, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
-from matplotlib.legend_handler import HandlerLine2D
+#from matplotlib.legend_handler import HandlerLine2D
 
 from PyTree import PyTree
 from PyTable import PyTable
+from PyGraphDetails import PyGraphDetails
 
 import database
 
@@ -46,7 +47,8 @@ class PyGraphs(ttk.Frame):
                  ,A.[Level]
                  ,A.[Nr]
                  ,RTrim(A.[Title])      As Title
-                 ,RTrim(A.[QueryName])  As QueryName
+                 ,A.[QueryId]
+                 ,RTrim(B.[QueryName])  As QueryName
                  ,A.[GraphType]
                  ,A.[Y_max]
                  ,A.[Y_min]
@@ -80,6 +82,29 @@ class PyGraphs(ttk.Frame):
                               
         # Get the metadata
         self.metadata = database.getData(self.connectionStringMeta, query)
+
+    def editItem(self, event):
+        # Create top level window
+        self.toplevel = tk.Toplevel()
+        # Add Database management widget
+        self.pyGraphDetails = PyGraphDetails(self.toplevel)
+        self.pyGraphDetails.grid(row=0, column=0, columnspan=3, sticky=tk.NW+tk.SE)
+        # Add OK button
+        buttonOK = ttk.Button(self.toplevel, text="OK", command=self.editOK)
+        buttonOK.grid(row=1, column=1, sticky=tk.SE, padx=5, pady=5)
+        # Fill in metadata
+        self.pyGraphDetails.graphType.set(self.metadata.GraphType[0])
+        self.pyGraphDetails.maxY.set(self.metadata.Y_max[0])
+        self.pyGraphDetails.minY.set(self.metadata.Y_min[0])
+        self.pyGraphDetails.minX.set(self.metadata.Interval_min[0])
+        self.pyGraphDetails.maxX.set(self.metadata.Interval_max[0])
+        self.pyGraphDetails.intervals.set(self.metadata.Interval_count[0])
+        
+    def editOK(self):
+        # TO DO
+        
+        # remove popup window
+        self.toplevel.destroy()
         
     def showGraph(self, event=None):
         # Get the data
@@ -147,6 +172,7 @@ class PyGraphs(ttk.Frame):
         # Pass events
         self.frameLeft.bind('<<TreeviewSelect>>', self.selectGraph)
         self.frameLeft.bind('<<Double-Button-1>>', self.showGraph)
+        self.frameLeft.bind('<<TreeviewEdit>>', self.editItem)
         
         # Number of graphs
         ttk.Label(self.frameLeft, text = "Graphs:").grid(row = 1, column = 0, sticky = tk.W, padx =5, pady=5)
@@ -175,25 +201,25 @@ class PyGraphs(ttk.Frame):
         self.panedwindowMain.add(self.panedwindowRight)
     
         # Create matplotlib figure and add it to frameRight
-        self.fig = Figure(figsize=(12, 10), tight_layout=True)
+        self.fig = Figure(figsize=(12, 8), tight_layout=True)
 
-        self.ax1 = self.fig.add_subplot(3,1,1)
+        self.ax1 = self.fig.add_subplot(2,1,1)
         self.ax1.set_title('title 1')
         self.ax1.set_xlabel( 'X-axis' )
         self.ax1.set_ylabel( 'Y-axis' )
         self.ax1.grid(True)
         
-        self.ax2 = self.fig.add_subplot(3,1,2)
+        self.ax2 = self.fig.add_subplot(2,1,2)
         self.ax2.set_title('title 2')
         self.ax2.set_xlabel( 'X-axis' )
         self.ax2.set_ylabel( 'Y-axis' )
         self.ax2.grid(True)
             
-        self.ax3 = self.fig.add_subplot(3,1,3)
-        self.ax3.set_title('title 3')
-        self.ax3.set_xlabel( 'X-axis' )
-        self.ax3.set_ylabel( 'Y-axis' )
-        self.ax3.grid(True)
+#        self.ax3 = self.fig.add_subplot(3,1,3)
+#        self.ax3.set_title('title 3')
+#        self.ax3.set_xlabel( 'X-axis' )
+#        self.ax3.set_ylabel( 'Y-axis' )
+#        self.ax3.grid(True)
             
         self.ax = self.ax1
         self.ax.set_facecolor('#FFFFE0')
@@ -228,11 +254,11 @@ class PyGraphs(ttk.Frame):
             self.ax2.set_facecolor('#FFFFE0')
             self.ax3.set_facecolor('#FFFFFF')
             self.ax = self.ax2
-        elif event.inaxes == self.ax3:
-            self.ax1.set_facecolor('#FFFFFF')
-            self.ax2.set_facecolor('#FFFFFF')
-            self.ax3.set_facecolor('#FFFFE0')
-            self.ax = self.ax3
+#        elif event.inaxes == self.ax3:
+#            self.ax1.set_facecolor('#FFFFFF')
+#            self.ax2.set_facecolor('#FFFFFF')
+#            self.ax3.set_facecolor('#FFFFE0')
+#            self.ax = self.ax3
         # Redraw
         self.canvas.draw()
                                   
@@ -244,5 +270,6 @@ class PyGraphs(ttk.Frame):
         
 # Allow the class to run stand-alone.
 if __name__ == "__main__":
-    PyGraphs().mainloop()
-
+    app = PyGraphs() 
+    app.master.title('PyExplore - Python Graphs Tool - version 0.1')
+    app.mainloop()

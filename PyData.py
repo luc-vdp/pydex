@@ -24,7 +24,7 @@ import sys
 
 #%% Main class
 class PyData(ttk.Frame):
-    def __init__(self, master=None, connectionStringMeta=None, dataframes=None, connectionId=None, connectionName=None, connectionString=None):        
+    def __init__(self, master=None, connectionStringMeta=None, dataframes=None, queryId=None):
         # Define connection to the meta data
         if connectionStringMeta is None:
             self.connectionStringMeta = "DRIVER={SQL Server Native Client 11.0};Server=PA-LPUTTE;Database=Metadata;Trusted_Connection=yes;"
@@ -131,7 +131,7 @@ class PyData(ttk.Frame):
         pass
 
     def selectDatabase(self):
-        # Creat top level window
+        # Create top level window
         self.toplevel = tk.Toplevel()
         # Add Database management widget
         self.pyDatabases = PyDatabases(self.toplevel, connectionStringMeta=self.connectionStringMeta, connectionId=self.connectionId.get())
@@ -383,5 +383,6 @@ class PyData(ttk.Frame):
 
 #%% Allow the class to run stand-alone.
 if __name__ == "__main__":
-    PyData().mainloop()
-
+    app = PyData() 
+    app.master.title('PyData - Python Data Tool - version 0.1')
+    app.mainloop()
